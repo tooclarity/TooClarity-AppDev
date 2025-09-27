@@ -207,7 +207,7 @@ const CoachingCenters = () => {
           styles.continueButton,
           { backgroundColor: isContinueEnabled ? '#0222D7' : '#E5E5E5' },
         ]}
-        onPress={() => isContinueEnabled && router.push('/nextScreen')}
+        onPress={() => isContinueEnabled && router.push('/home')}
         disabled={!isContinueEnabled}
         accessibilityLabel="Continue to next screen"
         accessibilityRole="button"

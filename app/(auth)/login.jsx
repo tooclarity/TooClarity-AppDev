@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Image, TextInput } from 'react-native';
 import { useRouter } from 'expo-router';
 
-
 import TooClarityLogo from '../../assets/images/Tooclaritylogo.png';
 import GoogleLogo from '../../assets/images/google-logo.png';
 import MicrosoftLogo from '../../assets/images/microsoft-logo.png';
