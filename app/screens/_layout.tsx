@@ -8,7 +8,6 @@ export default function Layout() {
       }}
     >
       <Stack.Screen name="profileSetup" />
-      <Stack.Screen name="NewScreen" />
       <Stack.Screen name="AcademicInterestsScreen" />
     </Stack>
   );

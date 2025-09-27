@@ -1,52 +1,19 @@
+// app/screens/Academiccategories/studyhalls/studyhalls.jsx
 
 import React from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, Dimensions, Image } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
-import kindergarten from '../../assets/images/kindergarten.png';
-import school from '../../assets/images/school.png';
-import intermediate from '../../assets/images/intermediate.png';
-import graduation from '../../assets/images/graduation.png';
-import coachingcenters from '../../assets/images/coachingcenters.png';
-import studyhalls from '../../assets/images/studyhalls.png';
-import tuitioncenter from '../../assets/images/tuitioncenter.png';
-import studyabroad from '../../assets/images/studyabroad.png';
-
-const AcademicInterestsScreen = () => {
+const StudyHalls = () => {
   const router = useRouter();
   const { width } = Dimensions.get('window');
-  const numColumns = Math.floor(width / 168); // Adjust based on tile width of 168px
-  const interests = ['Kindergarten', 'School', 'Intermediate', 'Graduation', 'Coaching Centers', 'Study Halls', 'Tuition Center', 'Study Abroad'];
-
-  const routeMap = {
-    'Kindergarten': 'kindergarten',
-    'School': 'school',
-    'Intermediate': 'intermediate',
-    'Graduation': 'graduation',
-    'Coaching Centers': 'coachingcenters',
-    'Study Halls': 'studyhalls',
-    'Tuition Center': 'tuitioncenters',
-    'Study Abroad': 'studyabroad',
-  };
-
-  const imageMap = {
-    'Kindergarten': kindergarten,
-    'School': school,
-    'Intermediate': intermediate,
-    'Graduation': graduation,
-    'Coaching Centers': coachingcenters,
-    'Study Halls': studyhalls,
-    'Tuition Center': tuitioncenter,
-    'Study Abroad': studyabroad,
-  };
+  const numColumns = Math.floor(width / 168);
+  const subInterests = ['Library Study', 'Group Study', 'Quiet Rooms', 'Online Study Halls', 'Virtual Study Groups', 'Study Cafes', 'Coworking Spaces', 'Exam Prep Halls'];
 
   const renderItem = ({ item }) => (
-    <TouchableOpacity 
-      style={styles.tile}
-      onPress={() => router.push(`/screens/Academiccategories/${routeMap[item]}/${routeMap[item]}`)}
-    >
-      <Image source={imageMap[item]} style={styles.tileImage} />
+    <TouchableOpacity style={styles.tile}>
+      <Text style={styles.tileText}>{item}</Text>
     </TouchableOpacity>
   );
 
@@ -62,10 +29,10 @@ const AcademicInterestsScreen = () => {
         </View>
       </View>
 
-      <Text style={styles.title}>Academic Interests</Text>
+      <Text style={styles.title}>Study Halls</Text>
 
       <FlatList
-        data={interests}
+        data={subInterests}
         renderItem={renderItem}
         keyExtractor={(item) => item}
         numColumns={numColumns}
@@ -110,7 +77,7 @@ const styles = StyleSheet.create({
     borderRadius: 2,
   },
   progressBarFill: {
-    width: '50%', // Updated progress for this screen
+    width: '75%',
     height: '100%',
     backgroundColor: '#0222D7',
     borderRadius: 2,
@@ -139,10 +106,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     margin: 12,
   },
-  tileImage: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 8,
+  tileText: {
+    fontSize: 16,
+    color: '#060B13',
+    textAlign: 'center',
   },
   continueButton: {
     width: '100%',
@@ -160,4 +127,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default AcademicInterestsScreen;
+export default StudyHalls;

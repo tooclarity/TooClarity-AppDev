@@ -1,5 +1,6 @@
 {
   "expo": {
+    "platforms": ["ios", "android", "web"],
     "name": "TooClarityApp",
     "slug": "TooClarityApp",
     "version": "1.0.0",
