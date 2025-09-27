@@ -9,6 +9,7 @@ export default function Layout() {
     >
       <Stack.Screen name="profileSetup" />
       <Stack.Screen name="AcademicInterestsScreen" />
+      <Stack.Screen name="home" />
     </Stack>
   );
 }

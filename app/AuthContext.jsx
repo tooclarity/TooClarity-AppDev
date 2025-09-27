@@ -1,4 +1,3 @@
-// AuthContext.jsx
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
 const AuthContext = createContext();
@@ -6,14 +5,15 @@ const AuthContext = createContext();
 export function AuthProvider({ children }) {
   const [auth, setAuth] = useState({
     isAuthenticated: false,
-    initialized: false,
+    initialized: false, // Start uninitialized
   });
 
   useEffect(() => {
     // Simulate auth initialization (e.g., check local storage or API)
-    setTimeout(() => {
+    const timer = setTimeout(() => {
       setAuth({ isAuthenticated: false, initialized: true }); // Default to unauthenticated
     }, 1000); // Simulate async initialization
+    return () => clearTimeout(timer); // Cleanup timer
   }, []);
 
   const logout = () => {

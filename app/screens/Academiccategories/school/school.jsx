@@ -34,7 +34,7 @@ const School = () => {
         <Ionicons name="chevron-back" size={24} color="#060B13" />
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.skipButton} onPress={() => router.push('/nextScreen')}>
+      <TouchableOpacity style={styles.skipButton} onPress={() => router.push('/home')}>
         <Text style={styles.skipText}>SKIP &gt; </Text>
       </TouchableOpacity>
 

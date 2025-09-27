@@ -52,16 +52,6 @@ const AcademicInterestsScreen = () => {
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-        <Ionicons name="chevron-back" size={24} color="#060B13" />
-      </TouchableOpacity>
-
-      <View style={styles.progressBarContainer}>
-        <View style={styles.progressBarBackground}>
-          <View style={styles.progressBarFill} />
-        </View>
-      </View>
-
       <Text style={styles.title}>Academic Interests</Text>
 
       <FlatList
@@ -75,7 +65,7 @@ const AcademicInterestsScreen = () => {
 
       <TouchableOpacity
         style={styles.continueButton}
-        onPress={() => router.push('/nextScreen')}
+        onPress={() => router.push('/home')}
       >
         <Text style={styles.buttonText}>Continue</Text>
       </TouchableOpacity>
@@ -88,32 +78,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F7F7F7',
     paddingHorizontal: 20,
-    paddingTop: 50,
-  },
-  backButton: {
-    position: 'absolute',
-    top: 50,
-    left: 20,
-    padding: 10,
-    zIndex: 10,
-  },
-  progressBarContainer: {
-    width: '90%',
-    height: 4,
-    backgroundColor: '#D1D5DB',
-    borderRadius: 2,
-    marginBottom: 40,
-  },
-  progressBarBackground: {
-    flex: 1,
-    backgroundColor: '#D1D5DB',
-    borderRadius: 2,
-  },
-  progressBarFill: {
-    width: '50%', // Updated progress for this screen
-    height: '100%',
-    backgroundColor: '#0222D7',
-    borderRadius: 2,
+    paddingTop: 20, // Reduced padding to avoid extra space at the top
   },
   title: {
     fontSize: 24,

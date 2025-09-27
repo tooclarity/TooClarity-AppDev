@@ -42,7 +42,7 @@ const StudyHalls = () => {
 
       <TouchableOpacity
         style={styles.continueButton}
-        onPress={() => router.push('/nextScreen')}
+        onPress={() => router.push('/home')}
       >
         <Text style={styles.buttonText}>Continue</Text>
       </TouchableOpacity>
