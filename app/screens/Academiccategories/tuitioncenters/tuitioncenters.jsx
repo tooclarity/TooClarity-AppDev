@@ -1,7 +1,5 @@
-
-
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, TextInput, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, TextInput, StyleSheet, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -33,11 +31,21 @@ const TuitionCenters = () => {
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+      <TouchableOpacity
+        style={styles.backButton}
+        onPress={() => router.back()}
+        accessibilityLabel="Go back"
+        accessibilityRole="button"
+      >
         <Ionicons name="chevron-back" size={24} color="#060B13" />
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.skipButton} onPress={() => router.push('/home')}>
+      <TouchableOpacity
+        style={styles.skipButton}
+        onPress={() => router.push('/home')}
+        accessibilityLabel="Skip to home"
+        accessibilityRole="button"
+      >
         <Text style={styles.skipText}>SKIP &gt;</Text>
       </TouchableOpacity>
 
@@ -56,10 +64,13 @@ const TuitionCenters = () => {
           key={index}
           style={styles.option}
           onPress={() => setSelectedLookingFor(item)}
+          accessibilityLabel={'Select ' + item}
+          accessibilityRole="radio"
+          accessibilityState={{ checked: selectedLookingFor === item }}
         >
           <View style={[
             styles.radioCircle,
-            selectedLookingFor === item && styles.selectedRadioCircle
+            selectedLookingFor === item && styles.selectedRadioCircle,
           ]} />
           <Text style={styles.optionText}>{item}</Text>
         </TouchableOpacity>
@@ -70,12 +81,15 @@ const TuitionCenters = () => {
       <TouchableOpacity
         style={styles.dropdown}
         onPress={() => setIsLevelOpen(!isLevelOpen)}
+        accessibilityLabel="Select academic level"
+        accessibilityRole="combobox"
+        accessibilityState={{ expanded: isLevelOpen }}
       >
         <Text style={[
           styles.dropdownText,
-          selectedLevel === 'Select your academic level' ? styles.placeholderText : styles.selectedText
+          selectedLevel === 'Select your academic level' ? styles.placeholderText : styles.selectedText,
         ]}>{selectedLevel}</Text>
-        <Ionicons name="chevron-down" size={24} color="#060B13" />
+        <Ionicons name={isLevelOpen ? 'chevron-up' : 'chevron-down'} size={24} color="#060B13" />
       </TouchableOpacity>
 
       {isLevelOpen && (
@@ -88,6 +102,8 @@ const TuitionCenters = () => {
                 setSelectedLevel(item);
                 setIsLevelOpen(false);
               }}
+              accessibilityLabel={'Select ' + item}
+              accessibilityRole="option"
             >
               <Text style={styles.optionText}>{item}</Text>
             </TouchableOpacity>
@@ -104,19 +120,25 @@ const TuitionCenters = () => {
         value={passoutYear}
         onChangeText={setPassoutYear}
         keyboardType="numeric"
+        maxLength={4}
+        accessibilityLabel="Enter passout year"
+        accessibilityRole="text"
       />
 
       <TouchableOpacity
         style={[
           styles.continueButton,
-          { backgroundColor: isContinueEnabled ? '#0222D7' : '#E5E5E5' }
+          { backgroundColor: isContinueEnabled ? '#0222D7' : '#E5E5E5' },
         ]}
         onPress={() => isContinueEnabled && router.push('/nextScreen')}
         disabled={!isContinueEnabled}
+        accessibilityLabel="Continue"
+        accessibilityRole="button"
+        accessibilityState={{ disabled: !isContinueEnabled }}
       >
         <Text style={[
           styles.buttonText,
-          { color: isContinueEnabled ? '#FFFFFF' : '#A1A1A1' }
+          { color: isContinueEnabled ? '#FFFFFF' : '#A1A1A1' },
         ]}>Continue</Text>
       </TouchableOpacity>
     </View>
@@ -128,18 +150,18 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 20,
-    paddingTop: 50,
+    paddingTop: Platform.OS === 'ios' ? 60 : 50,
   },
   backButton: {
     position: 'absolute',
-    top: 50,
+    top: Platform.OS === 'ios' ? 50 : 40,
     left: 20,
     padding: 10,
     zIndex: 10,
   },
   skipButton: {
     position: 'absolute',
-    top: 50,
+    top: Platform.OS === 'ios' ? 50 : 40,
     right: 20,
     zIndex: 10,
   },
