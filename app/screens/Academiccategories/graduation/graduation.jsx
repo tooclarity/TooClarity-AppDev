@@ -1,7 +1,7 @@
 // app/screens/Academiccategories/graduation/graduation.jsx
 
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -36,202 +36,310 @@ const Graduation = () => {
     'Humanities'
   ];
 
-  const isContinueEnabled = selectedType !== 'Select graduation type' && selectedStatus !== 'Select studying in' && selectedStream !== 'Select Your Preferred Stream';
+  const isContinueEnabled = 
+    selectedType !== 'Select graduation type' && 
+    selectedStatus !== 'Select studying in' && 
+    selectedStream !== 'Select Your Preferred Stream';
 
   return (
-    <View style={styles.container}>
-      <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-        <Ionicons name="chevron-back" size={24} color="#060B13" />
+    <View style={styles.outerContainer}>
+      {/* Back Button */}
+      <TouchableOpacity 
+        style={styles.backButton} 
+        onPress={() => router.back()}
+        activeOpacity={0.6}
+      >
+        <Ionicons name="chevron-back" size={24} color="#000000" />
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.skipButton} onPress={() => router.push('/home')}>
-        <Text style={styles.skipText}>SKIP &gt; </Text>
+      {/* Skip Button */}
+      <TouchableOpacity 
+        style={styles.skipButton} 
+        onPress={() => router.push('/home')}
+        activeOpacity={0.6}
+      >
+        <Text style={styles.skipText}>SKIP</Text>
+        <Ionicons name="chevron-forward" size={11} color="#000000" style={styles.skipIcon} />
       </TouchableOpacity>
 
-      <View style={styles.progressBarContainer}>
-        <View style={styles.progressBarBackground}>
+      <ScrollView 
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Progress Bar */}
+        <View style={styles.progressBarContainer}>
           <View style={styles.progressBarFill} />
         </View>
-      </View>
 
-      <Text style={styles.title}>Academic Interests</Text>
+        {/* Title */}
+        <Text style={styles.title}>Academic Interests</Text>
 
-      <Text style={styles.subTitle}>Graduation Type</Text>
+        {/* Graduation Type Section */}
+        <Text style={styles.subTitle}>Graduation Type</Text>
+        <View style={styles.dropdownContainer}>
+          <TouchableOpacity
+            style={styles.dropdownHeader}
+            onPress={() => {
+              setIsTypeOpen(!isTypeOpen);
+              setIsStatusOpen(false);
+              setIsStreamOpen(false);
+            }}
+            activeOpacity={0.7}
+          >
+            <Text style={[
+              styles.dropdownText,
+              selectedType === 'Select graduation type' ? styles.placeholderText : styles.selectedText
+            ]}>
+              {selectedType}
+            </Text>
+            <Ionicons 
+              name={isTypeOpen ? "chevron-up" : "chevron-down"} 
+              size={20} 
+              color="#060B13" 
+            />
+          </TouchableOpacity>
 
-      <TouchableOpacity
-        style={styles.dropdown}
-        onPress={() => setIsTypeOpen(!isTypeOpen)}
-      >
-        <Text style={[
-          styles.dropdownText,
-          selectedType === 'Select graduation type' ? styles.placeholderText : styles.selectedText
-        ]}>{selectedType}</Text>
-        <Ionicons name="chevron-down" size={24} color="#060B13" />
-      </TouchableOpacity>
-
-      {isTypeOpen && (
-        <View style={styles.optionList}>
-          {typeOptions.map((item) => (
-            <TouchableOpacity
-              key={item}
-              style={styles.optionItem}
-              onPress={() => {
-                setSelectedType(item);
-                setIsTypeOpen(false);
-              }}
-            >
-              <Text style={styles.optionText}>{item}</Text>
-            </TouchableOpacity>
-          ))}
+          {isTypeOpen && (
+            <View style={styles.optionList}>
+              {typeOptions.map((item) => (
+                <TouchableOpacity
+                  key={item}
+                  style={styles.optionItem}
+                  onPress={() => {
+                    setSelectedType(item);
+                    setIsTypeOpen(false);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.radioOuter}>
+                    {selectedType === item && <View style={styles.radioInner} />}
+                  </View>
+                  <Text style={styles.optionText}>{item}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
         </View>
-      )}
 
-      <Text style={styles.subTitle}>Academic Status</Text>
+        {/* Academic Status Section */}
+        <Text style={styles.subTitle}>Academic Status</Text>
+        <View style={styles.dropdownContainer}>
+          <TouchableOpacity
+            style={styles.dropdownHeader}
+            onPress={() => {
+              setIsStatusOpen(!isStatusOpen);
+              setIsTypeOpen(false);
+              setIsStreamOpen(false);
+            }}
+            activeOpacity={0.7}
+          >
+            <Text style={[
+              styles.dropdownText,
+              selectedStatus === 'Select studying in' ? styles.placeholderText : styles.selectedText
+            ]}>
+              {selectedStatus}
+            </Text>
+            <Ionicons 
+              name={isStatusOpen ? "chevron-up" : "chevron-down"} 
+              size={20} 
+              color="#060B13" 
+            />
+          </TouchableOpacity>
 
-      <TouchableOpacity
-        style={styles.dropdown}
-        onPress={() => setIsStatusOpen(!isStatusOpen)}
-      >
-        <Text style={[
-          styles.dropdownText,
-          selectedStatus === 'Select studying in' ? styles.placeholderText : styles.selectedText
-        ]}>{selectedStatus}</Text>
-        <Ionicons name="chevron-down" size={24} color="#060B13" />
-      </TouchableOpacity>
-
-      {isStatusOpen && (
-        <View style={styles.optionList}>
-          {statusOptions.map((item) => (
-            <TouchableOpacity
-              key={item}
-              style={styles.optionItem}
-              onPress={() => {
-                setSelectedStatus(item);
-                setIsStatusOpen(false);
-              }}
-            >
-              <Text style={styles.optionText}>{item}</Text>
-            </TouchableOpacity>
-          ))}
+          {isStatusOpen && (
+            <View style={styles.optionList}>
+              {statusOptions.map((item) => (
+                <TouchableOpacity
+                  key={item}
+                  style={styles.optionItem}
+                  onPress={() => {
+                    setSelectedStatus(item);
+                    setIsStatusOpen(false);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.radioOuter}>
+                    {selectedStatus === item && <View style={styles.radioInner} />}
+                  </View>
+                  <Text style={styles.optionText}>{item}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
         </View>
-      )}
 
-      <Text style={styles.subTitle}>Preferred Stream</Text>
+        {/* Preferred Stream Section */}
+        <Text style={styles.subTitle}>Preferred Stream</Text>
+        <View style={styles.dropdownContainer}>
+          <TouchableOpacity
+            style={styles.dropdownHeader}
+            onPress={() => {
+              setIsStreamOpen(!isStreamOpen);
+              setIsTypeOpen(false);
+              setIsStatusOpen(false);
+            }}
+            activeOpacity={0.7}
+          >
+            <Text style={[
+              styles.dropdownText,
+              selectedStream === 'Select Your Preferred Stream' ? styles.placeholderText : styles.selectedText
+            ]}>
+              {selectedStream}
+            </Text>
+            <Ionicons 
+              name={isStreamOpen ? "chevron-up" : "chevron-down"} 
+              size={20} 
+              color="#060B13" 
+            />
+          </TouchableOpacity>
 
-      <TouchableOpacity
-        style={styles.dropdown}
-        onPress={() => setIsStreamOpen(!isStreamOpen)}
-      >
-        <Text style={[
-          styles.dropdownText,
-          selectedStream === 'Select Your Preferred Stream' ? styles.placeholderText : styles.selectedText
-        ]}>{selectedStream}</Text>
-        <Ionicons name="chevron-down" size={24} color="#060B13" />
-      </TouchableOpacity>
-
-      {isStreamOpen && (
-        <View style={styles.optionList}>
-          {streamOptions.map((item) => (
-            <TouchableOpacity
-              key={item}
-              style={styles.optionItem}
-              onPress={() => {
-                setSelectedStream(item);
-                setIsStreamOpen(false);
-              }}
-            >
-              <Text style={styles.optionText}>{item}</Text>
-            </TouchableOpacity>
-          ))}
+          {isStreamOpen && (
+            <View style={styles.optionList}>
+              {streamOptions.map((item) => (
+                <TouchableOpacity
+                  key={item}
+                  style={styles.optionItem}
+                  onPress={() => {
+                    setSelectedStream(item);
+                    setIsStreamOpen(false);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.radioOuter}>
+                    {selectedStream === item && <View style={styles.radioInner} />}
+                  </View>
+                  <Text style={styles.optionText}>{item}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
         </View>
-      )}
 
+        {/* Spacer */}
+        <View style={styles.spacer} />
+      </ScrollView>
+
+      {/* Continue Button */}
       <TouchableOpacity
         style={[
           styles.continueButton,
-          { backgroundColor: isContinueEnabled ? '#0222D7' : '#E5E5E5' }
+          isContinueEnabled ? styles.continueButtonActive : styles.continueButtonInactive
         ]}
         onPress={() => isContinueEnabled && router.push('/nextScreen')}
         disabled={!isContinueEnabled}
+        activeOpacity={0.8}
       >
         <Text style={[
           styles.buttonText,
-          { color: isContinueEnabled ? '#FFFFFF' : '#A1A1A1' }
-        ]}>Continue</Text>
+          isContinueEnabled ? styles.buttonTextActive : styles.buttonTextInactive
+        ]}>
+          Continue
+        </Text>
       </TouchableOpacity>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  outerContainer: {
     flex: 1,
     backgroundColor: '#FFFFFF',
+  },
+  contentContainer: {
     paddingHorizontal: 20,
-    paddingTop: 50,
+    paddingTop: 56,
+    paddingBottom: 90, // Adjusted to prevent overlap with fixed button
   },
   backButton: {
     position: 'absolute',
-    top: 50,
+    top: 56,
     left: 20,
-    padding: 10,
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
     zIndex: 10,
   },
   skipButton: {
     position: 'absolute',
-    top: 50,
+    top: 56,
     right: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 32,
     zIndex: 10,
   },
   skipText: {
+    fontFamily: 'Montserrat',
     fontSize: 14,
-    color: '#060B13',
     fontWeight: '500',
+    color: '#000000',
+    lineHeight: 17,
+    letterSpacing: 0,
+    textAlign: 'center',
+  },
+  skipIcon: {
+    marginLeft: 2.5,
+    marginTop: 2.5,
   },
   progressBarContainer: {
-    width: '100%',
-    height: 4,
-    backgroundColor: '#D1D5DB',
-    borderRadius: 2,
-    marginBottom: 40,
-  },
-  progressBarBackground: {
-    flex: 1,
-    backgroundColor: '#D1D5DB',
-    borderRadius: 2,
+    width: 270,
+    height: 10,
+    backgroundColor: '#EBEEFF',
+    borderRadius: 5,
+    marginTop: 44,
+    marginBottom: 24,
+    overflow: 'hidden',
+    alignSelf: 'center',
   },
   progressBarFill: {
     width: '75%',
     height: '100%',
     backgroundColor: '#0222D7',
-    borderRadius: 2,
+    borderRadius: 5,
   },
   title: {
+    fontFamily: 'Montserrat',
     fontSize: 20,
-    fontWeight: '600',
-    color: '#060B13',
+    fontWeight: '500',
+    color: '#000000',
+    lineHeight: 20,
+    letterSpacing: 0,
     marginBottom: 20,
   },
   subTitle: {
+    fontFamily: 'Montserrat',
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: '500',
     color: '#060B13',
-    marginBottom: 10,
+    lineHeight: 22,
+    letterSpacing: 0,
+    marginBottom: 12,
+    marginTop: 4,
   },
-  dropdown: {
-    height: 50,
+  dropdownContainer: {
     width: '100%',
-    borderColor: '#D1D5DB',
     borderWidth: 1,
-    borderRadius: 8,
+    borderColor: '#DADADA',
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: '#FFFFFF',
+    marginBottom: 24,
+  },
+  dropdownHeader: {
+    height: 48,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
-    marginBottom: 20,
   },
   dropdownText: {
-    flex: 1,
+    fontFamily: 'Montserrat',
     fontSize: 16,
+    fontWeight: '400',
+    lineHeight: 20,
+    letterSpacing: 0,
+    flex: 1,
   },
   placeholderText: {
     color: '#A1A1A1',
@@ -240,32 +348,77 @@ const styles = StyleSheet.create({
     color: '#060B13',
   },
   optionList: {
-    backgroundColor: '#FFFFFF',
-    borderColor: '#D1D5DB',
-    borderWidth: 1,
-    borderRadius: 8,
-    marginBottom: 20,
+    backgroundColor: '#F5F6F9',
   },
   optionItem: {
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#D1D5DB',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
   },
-  optionText: {
-    fontSize: 16,
-    color: '#060B13',
-  },
-  continueButton: {
-    width: '100%',
-    height: 50,
-    borderRadius: 25,
+  radioOuter: {
+    height: 20,
+    width: 20,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: '#000000',
+    marginRight: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 40,
+  },
+  radioInner: {
+    height: 10,
+    width: 10,
+    borderRadius: 5,
+    backgroundColor: '#000000',
+  },
+  optionText: {
+    fontFamily: 'Montserrat',
+    fontSize: 16,
+    fontWeight: '400',
+    color: '#060B13',
+    lineHeight: 20,
+    letterSpacing: 0,
+  },
+  spacer: {
+    flex: 1,
+    minHeight: 40,
+  },
+  continueButton: {
+    position: 'absolute',
+    bottom: 26,
+    left: 16.5,
+    width: 361,
+    height: 50,
+    opacity: 1,
+    gap: 10,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: 16,
+    paddingRight: 24,
+    paddingBottom: 16,
+    paddingLeft: 24,
+  },
+  continueButtonActive: {
+    backgroundColor: '#0222D7',
+  },
+  continueButtonInactive: {
+    backgroundColor: '#E5E5E5',
   },
   buttonText: {
+    fontFamily: 'Montserrat',
     fontSize: 18,
     fontWeight: '500',
+    lineHeight: 22,
+    letterSpacing: 0,
+    textAlign: 'center',
+  },
+  buttonTextActive: {
+    color: '#FFFFFF',
+  },
+  buttonTextInactive: {
+    color: '#C7C7C7',
   },
 });
 
