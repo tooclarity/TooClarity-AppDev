@@ -13,22 +13,20 @@ export default function VerificationSuccessScreen() {
           style={{ tintColor: '#63D75B' }} // Apply #63D75B color to outer circle
         />
         <Image
-        //   source={require('../../assets/images/verificationtickbginner.png')} // Inner circle with tick (#3AC530)
+          source={require('../../assets/images/verificatintionbginner.png')} // Inner circle with tick (#3AC530)
           className="w-24 h-24 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"
           resizeMode="contain"
           style={{ tintColor: '#3AC530' }} // Apply #3AC530 color to inner circle with tick
         />
       </View>
-      <Text className="text-2xl font-rubik-bold text-gray-800 text-center mb-6">
+      <Text style={{ fontSize: 20, fontWeight: '700', color: '#0B2D16', textAlign: 'center', marginBottom: 24 }}>
         OTP Verified Successfully
       </Text>
       <TouchableOpacity
-        className="w-full py-4 bg-blue-600 rounded-xl"
-        onPress={() => router.push('/screens/profilesetup')} // Updated to match screenshot, removed .jsx for consistency
+        style={{ width: '100%', paddingVertical: 14, backgroundColor: '#0222D7', borderRadius: 12 }}
+        onPress={() => router.push('/screens/profilesetup')}
       >
-        <Text className="text-white text-base font-rubik-bold text-center">
-          Continue
-        </Text>
+        <Text style={{ color: '#fff', textAlign: 'center', fontSize: 16, fontWeight: '700' }}>Continue</Text>
       </TouchableOpacity>
     </View>
   );

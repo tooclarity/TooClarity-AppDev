@@ -1,28 +1,34 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Image } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useEffect, useRef, useState } from 'react';
+import { Image, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { useAuth } from '../AuthContext';
-
-// ✅ Correct image import with extension (same as ProfileSetup)
-import tooclarityLogo from '../../assets/images/Tooclaritylogo.png';
+const tooclarityLogo = require('../../assets/images/Tooclaritylogo.png');
 
 const OTP_LENGTH = 6;
-const RESEND_TIMER_SECONDS = 60;
+// OTP verification modes:
+// 'any' - accept any 6-digit number (useful for testing)
+// 'fixed' - require a fixed OTP (set FIXED_OTP)
+// 'generate' - generate a random OTP on mount (shown in dev only)
+const OTP_MODE = 'any'; // change to 'fixed' or 'generate' as needed
+const FIXED_OTP = '170523';
+const RESEND_SECONDS = 60;
 
-export default function OtpVerificationScreen() {
-  const navigation = useNavigation();
-  const { login } = useAuth();
+export default function OtpScreen() {
+  const params = useLocalSearchParams();
+  const phone = params?.phone;
+  const email = params?.email;
+  const router = useRouter();
+
   const [otp, setOtp] = useState(new Array(OTP_LENGTH).fill(''));
-  const [timer, setTimer] = useState(RESEND_TIMER_SECONDS);
+  const [timer, setTimer] = useState(RESEND_SECONDS);
   const [timerActive, setTimerActive] = useState(true);
   const [isInvalid, setIsInvalid] = useState(false);
-  const inputRefs = useRef([]);
+  const [focusedIndex, setFocusedIndex] = useState(-1);
+  const inputsRef = useRef([]);
+  const [generatedOtp, setGeneratedOtp] = useState(null);
 
-  // Timer logic
   useEffect(() => {
-    let interval;
+  let interval;
     if (timerActive) {
       interval = setInterval(() => {
         setTimer((prev) => {
@@ -38,119 +44,156 @@ export default function OtpVerificationScreen() {
     return () => clearInterval(interval);
   }, [timerActive]);
 
-  const handleOTPChange = (text, index) => {
+  useEffect(() => {
+    if (OTP_MODE === 'generate') {
+      // create a random 6-digit code
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      setGeneratedOtp(code);
+      // For convenience in testing, set the inputs to the generated OTP (optional)
+      setOtp(code.split(''));
+    }
+  }, []);
+
+  const handleChange = (text, index) => {
+    if (text.length > 1) return;
     const newOtp = [...otp];
-    newOtp[index] = text;
+    newOtp[index] = text.replace(/[^0-9]/g, '');
     setOtp(newOtp);
     setIsInvalid(false);
-    if (text !== '' && index < OTP_LENGTH - 1) {
-      inputRefs.current[index + 1].focus();
+    if (text && index < OTP_LENGTH - 1) {
+      inputsRef.current[index + 1]?.focus();
     }
   };
 
-  const handleBackspace = (e, index) => {
-    if (e.nativeEvent.key === 'Backspace' && otp[index] === '' && index > 0) {
-      inputRefs.current[index - 1].focus();
+  const handleKeyPress = (e, index) => {
+    if (e.nativeEvent.key === 'Backspace' && !otp[index] && index > 0) {
+      inputsRef.current[index - 1]?.focus();
     }
   };
 
-  const handleResendCode = () => {
-    setTimer(RESEND_TIMER_SECONDS);
+  const handleResend = () => {
+    setTimer(RESEND_SECONDS);
     setTimerActive(true);
+    setOtp(new Array(OTP_LENGTH).fill(''));
+    inputsRef.current[0]?.focus();
   };
 
-  const handleVerifyOTP = () => {
-    const enteredOtp = otp.join('');
-    if (enteredOtp.length === OTP_LENGTH) {
-      navigation.navigate('VerificationSuccessScreen');
-    } else {
+  const handleVerify = () => {
+    const joined = otp.join('');
+    if (joined.length !== OTP_LENGTH) {
       setIsInvalid(true);
+      return;
+    }
+    // Verification modes
+    if (OTP_MODE === 'any') {
+      // accept any 6-digit OTP
+      router.push('/VerificationSuccessScreen');
+      return;
+    }
+    if (OTP_MODE === 'fixed') {
+      if (joined === FIXED_OTP) {
+        router.push('/VerificationSuccessScreen');
+        return;
+      }
+      setIsInvalid(true);
+      return;
+    }
+    if (OTP_MODE === 'generate') {
+      if (joined === generatedOtp) {
+        router.push('/VerificationSuccessScreen');
+        return;
+      }
+      setIsInvalid(true);
+      return;
     }
   };
 
   const isButtonEnabled = otp.join('').length === OTP_LENGTH;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
-      {/* Back button with same style as profileSetup */}
-      <View style={{ padding: 10 }}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={{ padding: 10 }}>
-          <Ionicons name="chevron-back" size={24} color="#000000" />
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }}>
+      <View style={{ padding: 12 }}>
+        <TouchableOpacity onPress={() => router.back()} style={{ padding: 8 }}>
+          <Text style={{ fontSize: 22 }}>{'←'}</Text>
         </TouchableOpacity>
       </View>
 
-      <View className="flex-1 items-center bg-white p-6">
-        {/* Logo + Title */}
-        <View className="w-full items-center mb-10">
-          <Image
-            source={tooclarityLogo} // ✅ updated import usage
-            className="w-48 h-20 mb-4"
-            resizeMode="contain"
-          />
-          <Text className="text-2xl font-rubik-bold text-gray-800 mb-2">
-            Verify account with OTP
-          </Text>
-          <Text className="text-base font-rubik text-gray-600 text-center">
-            We have sent a 6-digit code to{' '}
-            <Text className="font-rubik-bold text-gray-800">+91 9177375319</Text>
-          </Text>
-        </View>
-
-        {/* OTP Inputs */}
-        <View className="flex-row justify-between w-full mb-4">
-          {otp.map((digit, index) => (
-            <TextInput
-              key={index}
-              ref={(ref) => (inputRefs.current[index] = ref)}
-              className={`w-12 h-14 text-center text-2xl font-rubik-bold rounded-xl border-2 ${
-                isInvalid
-                  ? 'border-red-500 text-red-500'
-                  : otp[index]
-                  ? 'border-primary'
-                  : 'border-gray-300'
-              }`}
-              keyboardType="numeric"
-              maxLength={1}
-              onChangeText={(text) => handleOTPChange(text, index)}
-              onKeyPress={(e) => handleBackspace(e, index)}
-              value={digit}
-            />
-          ))}
-        </View>
-
-        {isInvalid && (
-          <Text className="text-red-500 text-sm mt-2">Invalid OTP. Please try again.</Text>
-        )}
-
-        {/* Resend code */}
-        <Text className="text-gray-500 text-center mb-6 font-rubik">
-          Didn't get a code?
-          {timerActive ? (
-            <Text className="text-gray-400"> Resend in {timer.toString().padStart(2, '0')}s</Text>
-          ) : (
-            <TouchableOpacity onPress={handleResendCode}>
-              <Text className="text-primary font-rubik-medium"> Resend code</Text>
-            </TouchableOpacity>
-          )}
+      <View style={{ flex: 1, alignItems: 'center', paddingHorizontal: 20 }}>
+        <Image source={tooclarityLogo} style={{ width: 180, height: 60, marginBottom: 12 }} resizeMode="contain" />
+        <Text style={{ fontSize: 20, fontWeight: '700', marginBottom: 6 }}>Verify account with OTP</Text>
+        <Text style={{ color: '#6B7280', textAlign: 'center', marginBottom: 16 }}>
+          We have sent a 6 digit code to {phone ? `+91 ${phone}` : email || '+91 9177375319'}
         </Text>
 
-        {/* Verify Button */}
+        <View style={{ flexDirection: 'row', justifyContent: 'flex-start', marginBottom: 12 }}>
+          {otp.map((d, i) => {
+            const showError = isInvalid && otp.join('').length === OTP_LENGTH;
+            const borderColor = showError
+              ? '#EF4444'
+              : focusedIndex === i
+              ? '#0222D7'
+              : d
+              ? '#22A3FF'
+              : '#E6E6E6';
+            const backgroundColor = d ? '#FFFFFF' : '#FFFFFF';
+            return (
+              <TextInput
+                key={i}
+                ref={(r) => { inputsRef.current[i] = r; }}
+                value={d}
+                onChangeText={(t) => handleChange(t, i)}
+                onKeyPress={(e) => handleKeyPress(e, i)}
+                onFocus={() => setFocusedIndex(i)}
+                onBlur={() => setFocusedIndex(-1)}
+                keyboardType="number-pad"
+                maxLength={1}
+                textAlign="center"
+                style={{
+                  width: 52,
+                  height: 52,
+                  borderRadius: 10,
+                  borderWidth: 2,
+                  borderColor,
+                  textAlign: 'center',
+                  fontSize: 18,
+                  marginRight: 10,
+                  backgroundColor,
+                }}
+              />
+            );
+          })}
+        </View>
+
+        {isInvalid && <Text style={{ color: '#EF4444', marginBottom: 8 }}>Invalid OTP. Please try again.</Text>}
+
+        <View style={{ marginBottom: 16 }}>
+          {!timerActive ? (
+            <TouchableOpacity onPress={handleResend}>
+              <Text style={{ color: '#0222D7' }}>{'Resend Code'}</Text>
+            </TouchableOpacity>
+          ) : (
+            <Text style={{ color: '#6B7280' }}>Resend OTP in {timer}s</Text>
+          )}
+        </View>
+
         <TouchableOpacity
-          className={`w-full py-4 rounded-xl ${isButtonEnabled ? 'bg-primary' : 'bg-gray-300'}`}
-          onPress={handleVerifyOTP}
+          onPress={handleVerify}
           disabled={!isButtonEnabled}
+          style={{
+            width: '100%',
+            height: 56,
+            borderRadius: 12,
+            backgroundColor: isButtonEnabled ? '#0222D7' : '#E6E6E6',
+            justifyContent: 'center',
+            alignItems: 'center',
+            marginTop: 24,
+            opacity: isButtonEnabled ? 1 : 0.7,
+          }}
         >
-          <Text className="text-white text-base font-rubik-bold text-center">
-            Verify OTP
-          </Text>
+          <Text style={{ color: '#fff', fontSize: 18, fontWeight: '600' }}>{'Verify OTP'}</Text>
         </TouchableOpacity>
 
-        {/* Footer */}
-        <Text className="text-gray-500 text-xs mt-6 text-center font-rubik">
-          By continuing, you agree to our{' '}
-          <Text className="text-primary font-rubik-medium"> T&C</Text> and{' '}
-          <Text className="text-primary font-rubik-medium"> Privacy policy</Text>
-        </Text>
+        <Text style={{ color: '#6B7280', textAlign: 'center', marginTop: 16 }}>By continuing, you agree to our T&C and Privacy policy</Text>
       </View>
     </SafeAreaView>
   );
