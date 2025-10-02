@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Image, TextInput } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useState } from 'react';
+import { Image, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 import TooClarityLogo from '../../assets/images/Tooclaritylogo.png';
+import AppleLogo from '../../assets/images/apple-logo.png';
 import GoogleLogo from '../../assets/images/google-logo.png';
 import MicrosoftLogo from '../../assets/images/microsoft-logo.png';
-import AppleLogo from '../../assets/images/apple-logo.png';
 
 export default function LoginScreen() {
   const router = useRouter();
