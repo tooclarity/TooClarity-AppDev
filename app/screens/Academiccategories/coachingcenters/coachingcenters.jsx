@@ -1,5 +1,6 @@
+
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, TextInput, StyleSheet, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, TextInput, ScrollView, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -44,355 +45,159 @@ const CoachingCenters = () => {
     passoutYear.trim() !== '';
 
   return (
-    <View style={styles.container}>
-      {/* Back Button */}
+    <View className="flex-1 bg-white">
       <TouchableOpacity
-        style={styles.backButton}
+        className="absolute top-14 left-5 w-8 h-8 justify-center items-center z-10"
         onPress={() => router.back()}
-        accessibilityLabel="Go back"
-        accessibilityRole="button"
+        activeOpacity={0.6}
       >
         <Ionicons name="chevron-back" size={24} color="#060B13" />
       </TouchableOpacity>
 
-      {/* Skip Button with Vector Icon */}
       <TouchableOpacity
-        style={styles.skipButton}
-        onPress={() => router.push('/nextScreen')}
-        accessibilityLabel="Skip to next screen"
-        accessibilityRole="button"
+        className="absolute top-14 right-5 flex-row items-center h-8 z-10"
+        onPress={() => router.push('/home')}
+        activeOpacity={0.6}
       >
-        <Text style={styles.skipText}>SKIP</Text>
-        <Ionicons name="arrow-forward" size={16} color="#060B13" style={styles.skipIcon} />
+        <Text className="font-montserrat font-medium text-[14px] text-text leading-[17px] tracking-normal text-center">SKIP</Text>
+        <Ionicons name="chevron-forward" size={11} color="#060B13" style={{marginLeft: 2.5, marginTop: 2.5}} />
       </TouchableOpacity>
 
-      {/* Progress Bar */}
-      <View style={styles.progressBarContainer}>
-        <View style={styles.progressBarBackground}>
-          <View style={styles.progressBarFill} />
+      <ScrollView 
+        contentContainerStyle={{paddingHorizontal: 20, paddingTop: Platform.OS === 'ios' ? 60 : 56, paddingBottom: 90}}
+        showsVerticalScrollIndicator={false}
+      >
+        <View className="w-full h-[10px] bg-neutral-200 rounded-[5px] mt-5 mb-6 overflow-hidden">
+          <View className="w-[75%] h-full bg-primary rounded-[5px]" />
         </View>
-      </View>
 
-      {/* Title */}
-      <Text style={styles.title}>Your Academic Profile</Text>
+        <Text className="font-montserrat font-medium text-[20px] text-text leading-[20px] tracking-normal mb-5">Your Academic Profile</Text>
 
-      {/* Looking For Section */}
-      <Text style={styles.subTitle}>What are you looking for?</Text>
-      {lookingForOptions.map((item, index) => (
-        <TouchableOpacity
-          key={index}
-          style={styles.option}
-          onPress={() => setSelectedLookingFor(item)}
-          accessibilityLabel={'Select ' + item}
-          accessibilityRole="radio"
-          accessibilityState={{ checked: selectedLookingFor === item }}
-        >
-          <View style={styles.radioOuter}>
-            {selectedLookingFor === item && <View style={styles.radioInner} />}
-          </View>
-          <Text style={styles.optionText}>{item}</Text>
-        </TouchableOpacity>
-      ))}
-
-      {/* Academic Level Dropdown */}
-      <Text style={styles.subTitle}>What is your academic level?</Text>
-      <View style={styles.dropdownContainer}>
-        <TouchableOpacity
-          style={styles.dropdownHeader}
-          onPress={() => setIsLevelOpen(!isLevelOpen)}
-          accessibilityLabel="Select academic level"
-          accessibilityRole="combobox"
-          accessibilityState={{ expanded: isLevelOpen }}
-        >
-          <Text
-            style={[
-              styles.dropdownText,
-              selectedLevel === 'Select your academic status'
-                ? styles.placeholderText
-                : styles.selectedText,
-            ]}
+        <Text className="font-montserrat font-medium text-[18px] text-text leading-[22px] tracking-normal mb-3 mt-[16px]">What are you looking for?</Text>
+        {lookingForOptions.map((item, index) => (
+          <TouchableOpacity
+            key={index}
+            className="flex-row items-center mb-4"
+            onPress={() => setSelectedLookingFor(item)}
+            activeOpacity={0.6}
           >
-            {selectedLevel}
-          </Text>
-          <Ionicons
-            name={isLevelOpen ? 'chevron-up' : 'chevron-down'}
-            size={20}
-            color="#060B13"
-          />
-        </TouchableOpacity>
+            <View className="h-5 w-5 rounded-full border-2 border-text mr-3 justify-center items-center">
+              {selectedLookingFor === item && <View className="h-[10px] w-[10px] rounded-[5px] bg-text" />}
+            </View>
+            <Text className="font-montserrat font-normal text-base text-text leading-[20px] tracking-normal">{item}</Text>
+          </TouchableOpacity>
+        ))}
 
-        {isLevelOpen && (
-          <View style={styles.optionList}>
-            {levelOptions.map((item) => (
-              <TouchableOpacity
-                key={item}
-                style={styles.optionItem}
-                onPress={() => {
-                  setSelectedLevel(item);
-                  setIsLevelOpen(false);
-                }}
-                accessibilityLabel={'Select ' + item}
-                accessibilityRole="radio"
-                accessibilityState={{ checked: selectedLevel === item }}
-              >
-                <View style={styles.radioOuter}>
-                  {selectedLevel === item && <View style={styles.radioInner} />}
-                </View>
-                <Text style={styles.optionText}>{item}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
-      </View>
-
-      {/* Stream Dropdown */}
-      <Text style={styles.subTitle}>Stream</Text>
-      <View style={styles.dropdownContainer}>
-        <TouchableOpacity
-          style={styles.dropdownHeader}
-          onPress={() => setIsStreamOpen(!isStreamOpen)}
-          accessibilityLabel="Select stream"
-          accessibilityRole="combobox"
-          accessibilityState={{ expanded: isStreamOpen }}
-        >
-          <Text
-            style={[
-              styles.dropdownText,
-              selectedStream === 'Select your stream'
-                ? styles.placeholderText
-                : styles.selectedText,
-            ]}
+        <Text className="font-montserrat font-medium text-[18px] text-text leading-[22px] tracking-normal mb-3 mt-[16px]">What is your academic level?</Text>
+        <View className="w-full border border-neutral-300 rounded-[12px] overflow-hidden bg-white mb-6">
+          <TouchableOpacity
+            className="h-12 flex-row items-center justify-between px-4"
+            onPress={() => {
+              setIsLevelOpen(!isLevelOpen);
+              setIsStreamOpen(false);
+            }}
+            activeOpacity={0.7}
           >
-            {selectedStream}
-          </Text>
-          <Ionicons
-            name={isStreamOpen ? 'chevron-up' : 'chevron-down'}
-            size={20}
-            color="#060B13"
-          />
-        </TouchableOpacity>
+            <Text className={`font-montserrat font-normal text-base leading-[20px] tracking-normal flex-1 ${selectedLevel === 'Select your academic status' ? 'text-neutral-400' : 'text-text'}`}>
+              {selectedLevel}
+            </Text>
+            <Ionicons
+              name={isLevelOpen ? 'chevron-up' : 'chevron-down'}
+              size={20}
+              color="#060B13"
+            />
+          </TouchableOpacity>
 
-        {isStreamOpen && (
-          <View style={styles.optionList}>
-            {streamOptions.map((item) => (
-              <TouchableOpacity
-                key={item}
-                style={styles.optionItem}
-                onPress={() => {
-                  setSelectedStream(item);
-                  setIsStreamOpen(false);
-                }}
-                accessibilityLabel={'Select ' + item}
-                accessibilityRole="radio"
-                accessibilityState={{ checked: selectedStream === item }}
-              >
-                <View style={styles.radioOuter}>
-                  {selectedStream === item && <View style={styles.radioInner} />}
-                </View>
-                <Text style={styles.optionText}>{item}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
-      </View>
+          {isLevelOpen && (
+            <View className="bg-neutral-100">
+              {levelOptions.map((item) => (
+                <TouchableOpacity
+                  key={item}
+                  className="flex-row items-center px-4 py-[14px]"
+                  onPress={() => {
+                    setSelectedLevel(item);
+                    setIsLevelOpen(false);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <View className="h-5 w-5 rounded-full border-2 border-text mr-3 justify-center items-center">
+                    {selectedLevel === item && <View className="h-[10px] w-[10px] rounded-[5px] bg-text" />}
+                  </View>
+                  <Text className="font-montserrat font-normal text-base text-text leading-[20px] tracking-normal">{item}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+        </View>
 
-      {/* Passout Year Input */}
-      <Text style={styles.subTitle}>Passout Year</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Enter year"
-        placeholderTextColor="#A1A1A1"
-        value={passoutYear}
-        onChangeText={setPassoutYear}
-        keyboardType="numeric"
-        maxLength={4}
-        accessibilityLabel="Enter passout year"
-        accessibilityRole="text"
-      />
+        <Text className="font-montserrat font-medium text-[18px] text-text leading-[22px] tracking-normal mb-3 mt-[16px]">Stream</Text>
+        <View className="w-full border border-neutral-300 rounded-[12px] overflow-hidden bg-white mb-6">
+          <TouchableOpacity
+            className="h-12 flex-row items-center justify-between px-4"
+            onPress={() => {
+              setIsStreamOpen(!isStreamOpen);
+              setIsLevelOpen(false);
+            }}
+            activeOpacity={0.7}
+          >
+            <Text className={`font-montserrat font-normal text-base leading-[20px] tracking-normal flex-1 ${selectedStream === 'Select your stream' ? 'text-neutral-400' : 'text-text'}`}>
+              {selectedStream}
+            </Text>
+            <Ionicons
+              name={isStreamOpen ? 'chevron-up' : 'chevron-down'}
+              size={20}
+              color="#060B13"
+            />
+          </TouchableOpacity>
 
-      {/* Continue Button */}
+          {isStreamOpen && (
+            <View className="bg-neutral-100">
+              {streamOptions.map((item) => (
+                <TouchableOpacity
+                  key={item}
+                  className="flex-row items-center px-4 py-[14px]"
+                  onPress={() => {
+                    setSelectedStream(item);
+                    setIsStreamOpen(false);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <View className="h-5 w-5 rounded-full border-2 border-text mr-3 justify-center items-center">
+                    {selectedStream === item && <View className="h-[10px] w-[10px] rounded-[5px] bg-text" />}
+                  </View>
+                  <Text className="font-montserrat font-normal text-base text-text leading-[20px] tracking-normal">{item}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+        </View>
+
+        <Text className="font-montserrat font-medium text-[18px] text-text leading-[22px] tracking-normal mb-3 mt-[16px]">Passout Year</Text>
+        <TextInput
+          className="h-12 border border-neutral-300 rounded-[12px] px-4 mb-6 text-base font-montserrat text-text"
+          placeholder="Enter year"
+          placeholderTextColor="#A1A1A1"
+          value={passoutYear}
+          onChangeText={setPassoutYear}
+          keyboardType="numeric"
+          maxLength={4}
+        />
+
+        <View className="flex-1 min-h-[40px]" />
+      </ScrollView>
+
       <TouchableOpacity
-        style={[
-          styles.continueButton,
-          isContinueEnabled ? styles.continueButtonActive : styles.continueButtonInactive,
-        ]}
+        className={`absolute bottom-[26px] left-[16.5px] w-[361px] h-12 rounded-[12px] justify-center items-center px-6 py-4 ${isContinueEnabled ? 'bg-primary' : 'bg-gray-200'}`}
         onPress={() => isContinueEnabled && router.push('/home')}
         disabled={!isContinueEnabled}
-        accessibilityLabel="Next"
-        accessibilityRole="button"
-        accessibilityState={{ disabled: !isContinueEnabled }}
-        activeOpacity={0.7}
+        activeOpacity={0.8}
       >
-        <Text
-          style={[
-            styles.buttonText,
-            isContinueEnabled ? styles.buttonTextActive : styles.buttonTextInactive,
-          ]}
-        >
+        <Text className={`font-montserrat font-medium text-[18px] leading-[22px] tracking-normal text-center ${isContinueEnabled ? 'text-white' : 'text-neutral-500'}`}>
           Next
         </Text>
       </TouchableOpacity>
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'ios' ? 60 : 50,
-  },
-  backButton: {
-    position: 'absolute',
-    top: Platform.OS === 'ios' ? 50 : 40,
-    left: 20,
-    padding: 10,
-    zIndex: 10,
-  },
-  skipButton: {
-    position: 'absolute',
-    top: Platform.OS === 'ios' ? 50 : 40,
-    right: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    zIndex: 10,
-  },
-  skipText: {
-    fontSize: 14,
-    color: '#060B13',
-    fontWeight: '500',
-  },
-  skipIcon: {
-    marginTop: 2,
-  },
-  progressBarContainer: {
-    width: '100%',
-    height: 4,
-    backgroundColor: '#D1D5DB',
-    borderRadius: 2,
-    marginVertical: 20,
-  },
-  progressBarBackground: {
-    flex: 1,
-    backgroundColor: '#D1D5DB',
-    borderRadius: 2,
-  },
-  progressBarFill: {
-    width: '75%',
-    height: '100%',
-    backgroundColor: '#0222D7',
-    borderRadius: 2,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#060B13',
-    marginBottom: 20,
-  },
-  subTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#060B13',
-    marginBottom: 10,
-  },
-  option: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  radioOuter: {
-    height: 16,
-    width: 16,
-    borderRadius: 8,
-    borderWidth: 1.5,
-    borderColor: '#060B13',
-    marginRight: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  radioInner: {
-    height: 10,
-    width: 10,
-    borderRadius: 5,
-    backgroundColor: '#060B13',
-  },
-  optionText: {
-    fontSize: 16,
-    color: '#060B13',
-  },
-  dropdownContainer: {
-    borderWidth: 1,
-    borderColor: '#DADADD',
-    borderRadius: 12,
-    overflow: 'hidden',
-    marginBottom: 24,
-  },
-  dropdownHeader: {
-    height: 48,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    backgroundColor: '#FFFFFF',
-  },
-  dropdownText: {
-    fontSize: 16,
-    flex: 1,
-  },
-  placeholderText: {
-    color: '#A1A1A1',
-  },
-  selectedText: {
-    color: '#060B13',
-  },
-  optionList: {
-    backgroundColor: '#F5F6F9',
-  },
-  optionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  input: {
-    height: 50,
-    borderColor: '#D1D5DB',
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    marginBottom: 20,
-    fontSize: 16,
-    color: '#060B13',
-  },
-  continueButton: {
-    width: 361,
-    height: 50,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    alignSelf: 'center',
-    paddingTop: 16,
-    paddingBottom: 16,
-    paddingLeft: 24,
-    paddingRight: 24,
-  },
-  continueButtonActive: {
-    backgroundColor: '#0222D7',
-  },
-  continueButtonInactive: {
-    backgroundColor: '#E5E5E5',
-  },
-  buttonText: {
-    fontSize: 18,
-    fontWeight: '500',
-  },
-  buttonTextActive: {
-    color: '#FFFFFF',
-  },
-  buttonTextInactive: {
-    color: '#A1A1A1',
-  },
-});
 
 export default CoachingCenters;
