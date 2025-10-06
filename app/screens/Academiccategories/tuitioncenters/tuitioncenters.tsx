@@ -158,7 +158,7 @@ const TuitionCenters = () => {
 
       <TouchableOpacity
         className={`absolute bottom-[26px] left-[16.5px] w-[361px] h-12 rounded-[12px] justify-center items-center ${isContinueEnabled ? 'bg-primary' : 'bg-gray-200'}`}
-        onPress={() => isContinueEnabled && router.push('/nextScreen')}
+        onPress={() => isContinueEnabled && router.push('/(tabs)/home')}
         disabled={!isContinueEnabled}
         activeOpacity={0.8}
       >
