@@ -1,72 +1,43 @@
-// // app/screens/AcademicCategories/graduation/graduation.tsx
-// import React, { useState, useEffect } from 'react';
+// // app/screens/AcademicCategories/school/school.tsx
+// import React, { useState } from 'react';
 // import { View, Text, TouchableOpacity, ScrollView, Alert } from 'react-native';
 // import { useRouter, useLocalSearchParams } from 'expo-router';
 // import { Ionicons } from '@expo/vector-icons';
 // import { useAuth } from '../../../lib/auth-context';
 // import { API_BASE_URL } from '../../../../utils/constant';
 
-// const Graduation = () => {
+// const School = () => {
 //   const router = useRouter();
 //   const { profileType } = useLocalSearchParams<{ profileType: string }>();
 //   const { user, refreshUser } = useAuth();
-//   const [graduationType, setGraduationType] = useState('');
-//   const [isTypeOpen, setIsTypeOpen] = useState(false);
 //   const [studyingIn, setStudyingIn] = useState('');
-//   const [isStatusOpen, setIsStatusOpen] = useState(false);
+//   const [isStudyingOpen, setIsStudyingOpen] = useState(false);
 //   const [preferredStream, setPreferredStream] = useState('');
 //   const [isStreamOpen, setIsStreamOpen] = useState(false);
 //   const [loading, setLoading] = useState(false);
 
-//   const typeOptions = ['Under Graduation', 'Post Graduation'];
-
-//   const underStatusOptions = [
-//     'Passed Out',
-//     '1st Year',
-//     '2nd Year',
-//     '3rd Year',
-//     '4th Year',
+//   const studyingOptions = [
+//     'Completed Class 10th',
+//     'Class 10th',
+//     'Class 9th',
+//     'Class 8th',
+//     'Class 7th',
+//     'Class 6th',
+//     'Class 5th',
+//     'Class 4th',
+//     'Class 3rd',
+//     'Class 2nd',
+//     'Class 1st',
 //   ];
 
-//   const postStatusOptions = [
-//     'PG Passed',
-//     '1st Year',
-//     '2nd Year',
-//   ];
-
-//   const underStreamOptions = [
-//     'B.Tech',
-//     'B.Sc',
-//     'B.A',
-//     'B.Com',
-//     'BBA',
-//     'BCA',
-//     'BFA',
-//     'L.L.B',
-//     'B.Pharmacy',
+//   const streamOptions = [
+//     'MPC (Engineering)',
+//     'BiPC (Medical)',
+//     'CEC (Commerce)',
+//     'HEC (History)',
 //     'Other\'s',
 //     'Not Decided',
 //   ];
-
-//   const postStreamOptions = [
-//     'MBA',
-//     'MCA',
-//     'M.SC',
-//     'MS',
-//     'M.TECH',
-//     'M.COM',
-//     'M.PHARMACY',
-//     'L.L.M',
-//     'Other\'s',
-//   ];
-
-//   const statusOptions = graduationType === 'Under Graduation' ? underStatusOptions : postStatusOptions;
-//   const streamOptions = graduationType === 'Under Graduation' ? underStreamOptions : postStreamOptions;
-
-//   useEffect(() => {
-//     setStudyingIn('');
-//     setPreferredStream('');
-//   }, [graduationType]);
 
 //   const updateAcademicProfileInline = async (details: object) => {
 //     if (!user?.id) {
@@ -77,12 +48,10 @@
 //     console.log('Sending academic profile:', { profileType, details }); // Matching web log
 //     setLoading(true);
 //     try {
-//       const graduationTypeMapped = graduationType === 'Post Graduation' ? 'POST_GRADUATE' : 'UNDER_GRADUATE';
-//       const payloadDetails = { ...details, graduationType: graduationTypeMapped };
 //       const response = await fetch(`${API_BASE_URL}/api/v1/students/${user.id}/academic-profile`, {
 //         method: 'PUT',
 //         headers: { 'Content-Type': 'application/json' },
-//         body: JSON.stringify({ profileType, details: payloadDetails }),
+//         body: JSON.stringify({ profileType, details }),
 //         credentials: 'include',
 //       });
 
@@ -110,7 +79,7 @@
 //   };
 
 //   const handleContinue = async () => {
-//     if (!graduationType || !studyingIn || !preferredStream) {
+//     if (!studyingIn || !preferredStream) {
 //       Alert.alert('Incomplete', 'Please fill all fields.');
 //       return;
 //     }
@@ -119,18 +88,17 @@
 
 //     const success = await updateAcademicProfileInline(details);
 //     if (success) {
-//       Alert.alert('Success', 'Graduation profile updated!');
+//       Alert.alert('Success', 'School profile updated!');
 //       router.push('/(tabs)/home');
 //     }
 //   };
 
-//   const closeAllDropdowns = () => {
-//     setIsTypeOpen(false);
-//     setIsStatusOpen(false);
+//   const closeDropdowns = () => {
+//     setIsStudyingOpen(false);
 //     setIsStreamOpen(false);
 //   };
 
-//   const isContinueEnabled = !!graduationType && !!studyingIn && !!preferredStream && !loading;
+//   const isContinueEnabled = !!studyingIn && !!preferredStream && !loading;
 
 //   return (
 //     <ScrollView 
@@ -158,85 +126,41 @@
 //       </TouchableOpacity>
 
 //       <View className="w-[270px] h-[10px] bg-neutral-200 rounded-[5px] mt-11 mb-6 overflow-hidden self-center">
-//         <View className="w-[75%] h-full bg-primary rounded-[5px]" />
+//         <View className="w-[50%] h-full bg-primary rounded-[5px]" />
 //       </View>
 
 //       <Text className="font-montserrat font-medium text-[20px] text-text leading-[20px] tracking-normal mb-5">Your Academic Profile</Text>
-
-//       <Text className="font-montserrat font-medium text-[18px] text-text leading-[22px] tracking-normal mb-3">Graduation Type</Text>
-//       <View className="w-full border border-neutral-300 rounded-[12px] overflow-hidden bg-white mb-6">
-//         <TouchableOpacity
-//           className="h-12 flex-row items-center justify-between px-4"
-//           onPress={() => {
-//             setIsTypeOpen(!isTypeOpen);
-//             closeAllDropdowns();
-//           }}
-//           activeOpacity={0.7}
-//           disabled={loading}
-//         >
-//           <Text className={`font-montserrat font-normal text-base leading-[20px] tracking-normal flex-1 ${!graduationType ? 'text-neutral-400' : 'text-text'}`}>
-//             {graduationType || 'Select graduation type'}
-//           </Text>
-//           <Ionicons 
-//             name={isTypeOpen ? "chevron-up" : "chevron-down"} 
-//             size={20} 
-//             color="#060B13" 
-//           />
-//         </TouchableOpacity>
-
-//         {isTypeOpen && (
-//           <View className="bg-neutral-100">
-//             {typeOptions.map((item) => (
-//               <TouchableOpacity
-//                 key={item}
-//                 className="flex-row items-center px-4 py-[14px]"
-//                 onPress={() => {
-//                   setGraduationType(item);
-//                   setIsTypeOpen(false);
-//                 }}
-//                 activeOpacity={0.7}
-//                 disabled={loading}
-//               >
-//                 <View className="h-5 w-5 rounded-full border-2 border-text mr-3 justify-center items-center">
-//                   {graduationType === item && <View className="h-[10px] w-[10px] rounded-[5px] bg-text" />}
-//                 </View>
-//                 <Text className="font-montserrat font-normal text-base text-text leading-[20px] tracking-normal">{item}</Text>
-//               </TouchableOpacity>
-//             ))}
-//           </View>
-//         )}
-//       </View>
 
 //       <Text className="font-montserrat font-medium text-[18px] text-text leading-[22px] tracking-normal mb-3">Academic Status</Text>
 //       <View className="w-full border border-neutral-300 rounded-[12px] overflow-hidden bg-white mb-6">
 //         <TouchableOpacity
 //           className="h-12 flex-row items-center justify-between px-4"
 //           onPress={() => {
-//             setIsStatusOpen(!isStatusOpen);
-//             closeAllDropdowns();
+//             setIsStudyingOpen(!isStudyingOpen);
+//             closeDropdowns();
 //           }}
 //           activeOpacity={0.7}
-//           disabled={loading || !graduationType}
+//           disabled={loading}
 //         >
 //           <Text className={`font-montserrat font-normal text-base leading-[20px] tracking-normal flex-1 ${!studyingIn ? 'text-neutral-400' : 'text-text'}`}>
 //             {studyingIn || 'Select studying in'}
 //           </Text>
 //           <Ionicons 
-//             name={isStatusOpen ? "chevron-up" : "chevron-down"} 
+//             name={isStudyingOpen ? "chevron-up" : "chevron-down"} 
 //             size={20} 
 //             color="#060B13" 
 //           />
 //         </TouchableOpacity>
 
-//         {isStatusOpen && graduationType && (
+//         {isStudyingOpen && (
 //           <View className="bg-neutral-100">
-//             {statusOptions.map((item) => (
+//             {studyingOptions.map((item) => (
 //               <TouchableOpacity
 //                 key={item}
 //                 className="flex-row items-center px-4 py-[14px]"
 //                 onPress={() => {
 //                   setStudyingIn(item);
-//                   setIsStatusOpen(false);
+//                   setIsStudyingOpen(false);
 //                 }}
 //                 activeOpacity={0.7}
 //                 disabled={loading}
@@ -257,10 +181,10 @@
 //           className="h-12 flex-row items-center justify-between px-4"
 //           onPress={() => {
 //             setIsStreamOpen(!isStreamOpen);
-//             closeAllDropdowns();
+//             closeDropdowns();
 //           }}
 //           activeOpacity={0.7}
-//           disabled={loading || !graduationType}
+//           disabled={loading}
 //         >
 //           <Text className={`font-montserrat font-normal text-base leading-[20px] tracking-normal flex-1 ${!preferredStream ? 'text-neutral-400' : 'text-text'}`}>
 //             {preferredStream || 'Select Your Preferred Stream'}
@@ -272,7 +196,7 @@
 //           />
 //         </TouchableOpacity>
 
-//         {isStreamOpen && graduationType && (
+//         {isStreamOpen && (
 //           <View className="bg-neutral-100">
 //             {streamOptions.map((item) => (
 //               <TouchableOpacity
@@ -309,4 +233,4 @@
 //   );
 // };
 
-// export default Graduation;
+// export default School;
