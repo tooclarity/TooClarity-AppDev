@@ -539,7 +539,6 @@ import {
   ScrollView,
   StatusBar,
   Text,
-  TextInput,
   ToastAndroid,
   TouchableOpacity,
   View,
@@ -547,6 +546,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../types/authStore';
+import Header from '../screens/HeaderComponent';
+import SearchBar from '../screens/globalsearchbarcomponent';
 import SchoolDetailsComponent from '../screens/SchoolDetailsComponent';
 import FiltersComponent from '../screens/FiltersComponent';
 
@@ -689,7 +690,7 @@ export default function HomeScreen() {
     return (
       <View className="flex-1 justify-center items-center bg-[#F5F5FF]">
         <ActivityIndicator size="large" color="#0A46E4" />
-        <Text className="mt-4 text-gray-600">Loading profile...</Text>
+        <Text className="mt-4 text-gray-600 font-Montserrat-regular text-base">Loading profile...</Text>
       </View>
     );
   }
@@ -698,64 +699,23 @@ export default function HomeScreen() {
     <View className="flex-1 bg-[#F5F5FF] px-4 pt-12">
       <StatusBar hidden />
 
-      {/* HEADER - Hidden when viewing details or filters */}
-      {!selectedSchool && !showFilters && (
-        <View className="flex-row items-center justify-between mb-4">
-          <View className="flex-row items-center flex-1">
-            <TouchableOpacity onPress={() => router.push('/screens/profilesetup')} className="mr-3">
-              {profilePic || user?.profilePicture ? (
-                <Image
-                  source={{ uri: profilePic || user?.profilePicture }}
-                  className="w-12 h-12 rounded-full"
-                />
-              ) : (
-                <View className="w-12 h-12 rounded-full bg-[#0A46E4] justify-center items-center">
-                  <Text className="text-white font-Montserrat-semibold text-lg">
-                    {getInitials(user?.name)}
-                  </Text>
-                </View>
-              )}
-            </TouchableOpacity>
-            <View>
-              <Text className="font-Montserrat-regular text-[14px] text-gray-500">
-                Welcome back
-              </Text>
-              <Text className="font-Montserrat-semibold text-[18px] text-black">
-                {user?.name || 'User'} Wave
-              </Text>
-            </View>
-          </View>
-          <View className="flex-row gap-3">
-            <TouchableOpacity
-              onPress={() => router.push('/screens/notifications')}
-              className="w-12 h-12 items-center justify-center bg-white rounded-full shadow-sm"
-            >
-              <Ionicons name="notifications-outline" size={24} color="#1e1e1e" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => router.push('/(tabs)/wishlist')}
-              className="w-12 h-12 items-center justify-center bg-white rounded-full shadow-sm"
-            >
-              <Ionicons name="heart-outline" size={24} color="#1e1e1e" />
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
+      <Header
+        user={user}
+        profilePic={profilePic}
+        getInitials={getInitials}
+        selectedSchool={selectedSchool}
+        showFilters={showFilters}
+      />
 
-      {/* SEARCH BAR — Always visible */}
-      <View className="flex-row items-center bg-white rounded-full px-5 py-3 mb-6 shadow-sm">
-        <Ionicons name="search" size={20} color="#9CA3AF" />
-        <TextInput
-          placeholder="Search schools or programs"
-          className="flex-1 ml-3 font-Montserrat-regular text-[16px] text-black"
-          placeholderTextColor="#9CA3AF"
-          value={searchQuery}
-          onChangeText={setSearchQuery}
+      {/* SEARCH BAR AND FILTER - Always visible, separated */}
+      {!selectedSchool && !showFilters && (
+        <SearchBar
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          onFilterPress={() => setShowFilters(true)}
+          showFilter={true}
         />
-        <TouchableOpacity onPress={() => setShowFilters(true)}>
-          <Ionicons name="options" size={20} color="#0222D7" />
-        </TouchableOpacity>
-      </View>
+      )}
 
       {/* SCHOOL LIST */}
       {!selectedSchool && !showFilters && (
@@ -769,19 +729,19 @@ export default function HomeScreen() {
               <View className="absolute bottom-0 left-0 right-0 bg-black/50 px-4 py-3">
                 <View className="flex-row items-center mb-1">
                   <Image source={{ uri: school.logo }} className="w-6 h-6 rounded mr-2" />
-                  <Text className="font-montserrat-semibold text-white text-[14px] flex-1">
+                  <Text className="font-Montserrat-semibold text-white text-[14px] flex-1">
                     {school.name}
                   </Text>
                   <Ionicons name="bookmark-outline" size={20} color="white" />
                 </View>
-                <Text className="font-montserrat-regular text-white text-[12px] mb-1">
+                <Text className="font-Montserrat-regular text-white text-[12px] mb-1">
                   {school.description}
                 </Text>
                 <View className="flex-row justify-between">
-                  <Text className="font-montserrat-medium text-white text-[12px]">
+                  <Text className="font-Montserrat-medium text-white text-[12px]">
                     Total Fees {school.fees}
                   </Text>
-                  <Text className="font-montserrat-medium text-white text-[12px]">
+                  <Text className="font-Montserrat-medium text-white text-[12px]">
                     Duration: {school.duration}
                   </Text>
                 </View>
@@ -790,7 +750,7 @@ export default function HomeScreen() {
                 className="bg-[#0222D7] py-3 px-4 mt-[-1px]"
                 onPress={() => setSelectedSchool(school)}
               >
-                <Text className="font-montserrat-semibold text-white text-center text-[16px]">
+                <Text className="font-Montserrat-semibold text-white text-center text-[16px]">
                   View Details
                 </Text>
               </TouchableOpacity>
@@ -815,6 +775,9 @@ export default function HomeScreen() {
           onClear={clearAllFilters}
           onShowResults={fetchFilteredResults}
           onClose={() => setShowFilters(false)}
+          user={user}
+          profilePic={profilePic}
+          getInitials={getInitials}
         />
       )}
     </View>

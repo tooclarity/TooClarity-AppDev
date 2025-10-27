@@ -1,7 +1,10 @@
-// app/components/FiltersComponent.tsx
-import React from 'react';
+// app/components/FiltersWithSearch.tsx
+import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import Header from '../screens/HeaderComponent';
+import SearchBar from '../screens/globalsearchbarcomponent';
 
 interface FiltersProps {
   selectedInstitute?: string;
@@ -13,6 +16,10 @@ interface FiltersProps {
   onClear?: () => void;
   onShowResults?: () => void;
   onClose?: () => void;
+  onSearch?: (query: string) => void;
+  user: any; // Add user prop for Header
+  profilePic: string | null; // Add profilePic prop for Header
+  getInitials: (name: string) => string; // Add getInitials prop for Header
 }
 
 const INSTITUTES = [
@@ -29,7 +36,7 @@ const INSTITUTES = [
 const KINDERGARTEN_LEVELS = ['Play School', 'Lower kindergarten', 'Upper Kindergarten'];
 const MODES = ['Offline', 'Online'];
 
-const FiltersComponent: React.FC<FiltersProps> = ({
+const FiltersWithSearch: React.FC<FiltersProps> = ({
   selectedInstitute,
   selectedLevels = [],
   selectedModes = [],
@@ -39,7 +46,19 @@ const FiltersComponent: React.FC<FiltersProps> = ({
   onClear,
   onShowResults,
   onClose,
+  onSearch,
+  user,
+  profilePic,
+  getInitials,
 }) => {
+  const router = useRouter();
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const handleSearch = (text: string) => {
+    setSearchQuery(text);
+    onSearch && onSearch(text);
+  };
+
   const renderPill = (
     label: string,
     active: boolean,
@@ -60,7 +79,7 @@ const FiltersComponent: React.FC<FiltersProps> = ({
   );
 
   return (
-    <View className="flex-1 bg-[#EEF3FF] rounded-lg p-4"> {/* match Home bg */}
+    <View className="flex-1 bg-[#EEF3FF] rounded-lg p-4">
       {/* Close (X) Button */}
       {onClose && (
         <TouchableOpacity
@@ -71,7 +90,23 @@ const FiltersComponent: React.FC<FiltersProps> = ({
         </TouchableOpacity>
       )}
 
-      <ScrollView showsVerticalScrollIndicator={false} className="mt-8">
+      {/* Header */}
+      <Header
+        user={user}
+        profilePic={profilePic}
+        getInitials={getInitials}
+        selectedSchool={null}
+        showFilters={false}
+      />
+
+      {/* SEARCH BAR */}
+      <SearchBar
+        searchQuery={searchQuery}
+        onSearchChange={handleSearch}
+        showFilter={false}
+      />
+
+      <ScrollView showsVerticalScrollIndicator={false}>
         {/* Institute Type */}
         <Text className="font-semibold text-[16px] mb-2">Institute Type</Text>
         <View className="flex-row flex-wrap mb-4">
@@ -120,4 +155,4 @@ const FiltersComponent: React.FC<FiltersProps> = ({
   );
 };
 
-export default FiltersComponent;
+export default FiltersWithSearch;
