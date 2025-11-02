@@ -19,28 +19,29 @@ import * as Google from 'expo-auth-session/providers/google';
 import TooClarityLogo from '../../assets/images/Tooclaritylogo.png';
 import GoogleLogo from '../../assets/images/google-logo.png';
 import { useAuth } from '../lib/auth-context';
-import { API_BASE_URL } from '../../utils/constant';
+
+const API_BASE_URL = 'https://tooclarity.onrender.com'; // Updated to Render URL for consistency
 
 const { width } = Dimensions.get('window');
 
 export default function StudentLogin() {
   const router = useRouter();
 
-  // ✅ from AuthContext
-  const { login, refreshUser, user } = useAuth();
+  // from AuthContext
+  const { refreshUser, user } = useAuth();
 
-  // ✅ Google Auth setup
+  // Google Auth setup
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
     clientId: '906583664549-c22ppjehvg75mi0ea89up61jbh139u9c.apps.googleusercontent.com',
   });
 
-  // ✅ Local state
-  const [formData, setFormData] = useState({ email: '', password: '' });
+  // Local state
+  const [formData, setFormData] = useState({ contactNumber: '', password: '' });
   const [isLoading, setIsLoading] = useState(false);
   const [loadingProvider, setLoadingProvider] = useState<null | 'google'>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // ✅ handle Google OAuth response
+  // handle Google OAuth response
   useEffect(() => {
     if (response?.type === 'success') {
       const { id_token } = response.params;
@@ -52,43 +53,80 @@ export default function StudentLogin() {
     }
   }, [response]);
 
-  // ✅ input handling
+  // input handling
   const handleInputChange = (name: string, value: string) => {
     setFormData(prev => ({ ...prev, [name]: value }));
     if (error) setError(null);
   };
 
-  // ✅ redirect user after login
-  const navigateAfterLogin = (u: any) => {
-    if (u && !u.isProfileCompleted) {
+  // redirect user after login (with id check)
+  const navigateAfterLogin = () => {
+    if (!user || !user.id) {
+      Alert.alert('Error', 'User profile not loaded. Please try again.');
+      return;
+    }
+    if (user && !user.isProfileCompleted) {
       router.replace('/screens/profilesetup');
     } else {
       router.replace('/(tabs)/home');
     }
   };
 
-  // ✅ normal login
+  // normal login with direct fetch
   const handleSubmit = async () => {
-    if (!formData.email || !formData.password) {
-      setError('Please enter email and password');
+    if (!formData.contactNumber || !formData.password) {
+      setError('Please enter mobile number and password');
       return;
     }
 
     setIsLoading(true);
     setError(null);
 
-    console.log('[Login] Attempting login with:', formData.email);
+    console.log('[Login] Attempting login with:', formData.contactNumber);
+
+    const loginData = {
+      contactNumber: formData.contactNumber,
+      password: formData.password,
+      type: 'student',
+    };
+
+    console.log('[Login] Sending payload:', loginData);
 
     try {
-      const success = await login(formData.email, formData.password, 'student');
-      if (success) {
-        console.log('[Login] Login successful');
-        await refreshUser();
-        navigateAfterLogin(user);
-      } else {
-        console.log('[Login] Login failed: Invalid credentials');
-        setError('Login failed. Please check your credentials.');
+      const res = await fetch(`${API_BASE_URL}/api/v1/auth/login`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(loginData),
+        credentials: 'include',
+      });
+
+      const text = await res.text();
+      console.log('[Login] Response status:', res.status, 'Text:', text);
+
+      let data;
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        data = { message: text };
       }
+
+      if (!res.ok) {
+        let errMsg = 'Login failed. Please check your credentials.';
+        if (data && Array.isArray(data.errors)) {
+          errMsg = data.errors.map((e: any) => e.msg).join('; ');
+        } else if (data && data.message) {
+          errMsg = data.message;
+        }
+        setError(errMsg);
+        return;
+      }
+
+      // Success - refresh user and ensure id is set
+      await refreshUser();
+      console.log('[Login] Login successful, user ID:', user?.id);
+      navigateAfterLogin();
     } catch (err) {
       console.error('[Login] Error:', err);
       setError('An error occurred during login. Please try again.');
@@ -97,21 +135,21 @@ export default function StudentLogin() {
     }
   };
 
-  // ✅ Google login
+  // Google login
   const handleGoogleClick = async () => {
     console.log('[Google] Initiating Google login...');
     setLoadingProvider('google');
     await promptAsync({ showInRecents: true });
   };
 
-  // ✅ Google login handler
+  // Google login handler
   const handleGoogleLogin = async (idToken: string) => {
-    console.log('[Google] Logging in with ID token:', idToken);
+    console.log('[Google] Logging in with ID token:', idToken ? 'present' : 'missing');
     try {
       const res = await fetch(`${API_BASE_URL}/api/v1/auth/google`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: idToken, role: 'student', source: 'rn-app' }),
+        body: JSON.stringify({ token: idToken }),
         credentials: 'include',
       });
 
@@ -119,14 +157,20 @@ export default function StudentLogin() {
       console.log('[Google] Response status:', res.status, 'Text:', text);
 
       if (!res.ok) {
-        Alert.alert('Error', text || 'Google login failed');
-        setLoadingProvider(null);
+        let data;
+        try {
+          data = text ? JSON.parse(text) : {};
+        } catch {
+          data = { message: text };
+        }
+        const errMsg = data?.message || text || 'Google login failed';
+        Alert.alert('Error', errMsg);
         return;
       }
 
       await refreshUser();
-      console.log('[Google] Login successful via Google');
-      navigateAfterLogin(user);
+      console.log('[Google] Login successful via Google, user ID:', user?.id);
+      navigateAfterLogin();
     } catch (err) {
       console.error('[Google] Login error:', err);
       Alert.alert('Error', 'Google login failed');
@@ -135,7 +179,7 @@ export default function StudentLogin() {
     }
   };
 
-  const loginButtonDisabled = isLoading || !formData.email || !formData.password;
+  const loginButtonDisabled = isLoading || !formData.contactNumber || !formData.password;
   const googleButtonDisabled = loadingProvider === 'google';
 
   return (
@@ -161,13 +205,13 @@ export default function StudentLogin() {
         {error && <Text style={styles.errorText}>{error}</Text>}
 
         <View style={styles.inputContainer}>
-          <Ionicons name="mail" size={20} color="#9CA3AF" style={styles.inputIcon} />
+          <Ionicons name="call-outline" size={20} color="#9CA3AF" style={styles.inputIcon} />
           <TextInput
             style={styles.textInput}
-            placeholder="Enter your email"
-            value={formData.email}
-            onChangeText={text => handleInputChange('email', text)}
-            keyboardType="email-address"
+            placeholder="Enter your Mobile Number"
+            value={formData.contactNumber}
+            onChangeText={text => handleInputChange('contactNumber', text)}
+            keyboardType="phone-pad"
             autoCapitalize="none"
             editable={!isLoading}
           />
@@ -195,6 +239,19 @@ export default function StudentLogin() {
           </Text>
         </TouchableOpacity>
 
+        <View style={styles.signupSection}>
+          <Text style={styles.signupText}>Don't have an account? </Text>
+          <TouchableOpacity onPress={() => router.push('/signup')}>
+            <Text style={styles.signupLink}>Sign up</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.divider}>
+          <View style={styles.line} />
+          <Text style={styles.orText}>OR</Text>
+          <View style={styles.line} />
+        </View>
+
         <TouchableOpacity
           style={[styles.oauthButton, googleButtonDisabled && styles.disabledButton]}
           onPress={handleGoogleClick}
@@ -209,7 +266,7 @@ export default function StudentLogin() {
   );
 }
 
-// 💅 Styling
+// Styling
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC', padding: 20 },
   header: { flexDirection: 'row', alignItems: 'center', marginBottom: 32 },
@@ -247,6 +304,21 @@ const styles = StyleSheet.create({
   },
   disabledButton: { opacity: 0.5, backgroundColor: '#D1D5DB' },
   submitButtonText: { color: '#FFFFFF', fontWeight: '600', fontSize: 16 },
+  signupSection: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 16,
+    marginBottom: 16,
+  },
+  signupText: { fontSize: 14, color: '#6B7280' },
+  signupLink: { fontSize: 14, fontWeight: '600', color: '#2563EB' },
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 16,
+  },
+  line: { flex: 1, height: 1, backgroundColor: '#E5E7EB' },
+  orText: { fontSize: 12, color: '#9CA3AF', marginHorizontal: 8 },
   oauthButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -257,7 +329,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF',
     borderRadius: 12,
     paddingVertical: 12,
-    marginTop: 16,
   },
   oauthButtonText: { fontSize: 16, fontWeight: '500', color: '#111827' },
   googleIcon: { width: 20, height: 20 },
