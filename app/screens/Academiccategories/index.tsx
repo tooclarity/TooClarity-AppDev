@@ -1,19 +1,19 @@
-// // app/screens/AcademicCategories/index.tsx (rename from AcademicInterestsScreen.tsx)
+// // app/screens/AcademicCategories/index.tsx
 // import React, { useState, useEffect } from 'react';
 // import { View, Text, FlatList, TouchableOpacity, Image, Alert } from 'react-native';
 // import { useRouter } from 'expo-router';
 // import { Ionicons } from '@expo/vector-icons';
-// import { useAuth } from '../lib/auth-context';
-// import { API_BASE_URL } from '../../utils/constant';
+// import { useAuth } from '../../lib/auth-context';
+// import { API_BASE_URL } from '../../../utils/constant';
 
-// import kindergarten from '../../assets/images/kindergarten.png';
-// import school from '../../assets/images/school.png';
-// import intermediate from '../../assets/images/intermediate.png';
-// import graduation from '../../assets/images/graduation.png';
-// import coachingcenters from '../../assets/images/coachingcenters.png';
-// import studyhalls from '../../assets/images/studyhalls.png';
-// import tuitioncenter from '../../assets/images/tuitioncenter.png';
-// import studyabroad from '../../assets/images/studyabroad.png';
+// import kindergarten from '../../../assets/images/kindergarten.png';
+// import school from '../../../assets/images/school.png';
+// import intermediate from '../../../assets/images/intermediate.png';
+// import graduation from '../../../assets/images/graduation.png';
+// import coachingcenters from '../../../assets/images/coachingcenters.png';
+// import studyhalls from '../../../assets/images/studyhalls.png';
+// import tuitioncenter from '../../../assets/images/tuitioncenter.png';
+// import studyabroad from '../../../assets/images/studyabroad.png';
 
 // interface Interest {
 //   key: string;
@@ -47,17 +47,6 @@
 //     { key: 'STUDY_ABROAD', label: 'Study Abroad' },
 //   ];
 
-//   const routeMap: Record<string, string> = {
-//     'KINDERGARTEN': 'kindergarten',
-//     'SCHOOL': 'school',
-//     'INTERMEDIATE': 'intermediate',
-//     'GRADUATION': 'graduation',
-//     'COACHING_CENTER': 'coachingcenters',
-//     'STUDY_HALLS': 'studyhalls',
-//     'TUITION_CENTER': 'tuitioncenters',
-//     'STUDY_ABROAD': 'studyabroad',
-//   };
-
 //   const imageMap: Record<string, any> = {
 //     'KINDERGARTEN': kindergarten,
 //     'SCHOOL': school,
@@ -76,6 +65,7 @@
 //       return false;
 //     }
 //     console.log('Updating profile for user ID:', user.id, 'Type:', profileType); // Debug
+//     console.log('Sending academic profile:', { profileType, details }); // Matching web log
 //     setLoading(true);
 //     try {
 //       const response = await fetch(`${API_BASE_URL}/api/v1/students/${user.id}/academic-profile`, {
@@ -129,10 +119,10 @@
 //       return;
 //     }
 
-//     // For others, navigate to category screen (update will happen there)
-//     const route = routeMap[selectedInterest as keyof typeof routeMap];
-//     console.log('Navigating to route:', `/AcademicCategories/${route}`); // Debug
-//     router.push(`/AcademicCategories/${route}`);
+//     // For others, navigate to specific category screen
+//     const pathname = `/AcademicCategories/${selectedInterest.toLowerCase()}`;
+//     console.log('Navigating to route:', pathname); // Debug
+//     router.push(pathname as any); // Use 'as any' to bypass TS strict typing for pathname
 //   };
 
 //   const renderHeader = () => (

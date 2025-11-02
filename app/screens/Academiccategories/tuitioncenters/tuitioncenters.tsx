@@ -1,173 +1,230 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
-import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+// // app/screens/AcademicCategories/tuitioncenters/tuitioncenters.tsx
+// import React, { useState } from 'react';
+// import { View, Text, TouchableOpacity, ScrollView, Alert } from 'react-native';
+// import { useRouter, useLocalSearchParams } from 'expo-router';
+// import { Ionicons } from '@expo/vector-icons';
+// import { useAuth } from '../../../lib/auth-context';
+// import { API_BASE_URL } from '../../../../utils/constant';
 
-const TuitionCenters = () => {
-  const router = useRouter();
+// const TuitionCenters = () => {
+//   const router = useRouter();
+//   const { profileType } = useLocalSearchParams<{ profileType: string }>();
+//   const { user, refreshUser } = useAuth();
+//   const [studyingIn, setStudyingIn] = useState('');
+//   const [isStudyingOpen, setIsStudyingOpen] = useState(false);
+//   const [preferredStream, setPreferredStream] = useState('');
+//   const [isStreamOpen, setIsStreamOpen] = useState(false);
+//   const [loading, setLoading] = useState(false);
 
-  // Academic Status state
-  const [selectedStatus, setSelectedStatus] = useState('Select studying in');
-  const [isStatusOpen, setIsStatusOpen] = useState(false);
-  const statusOptions = [
-    'Pursuing',
-    'Completed',
-    'Seeking Admission'
-  ];
+//   const studyingOptions = [
+//     '6th Grade',
+//     '7th Grade',
+//     '8th Grade',
+//     '9th Grade',
+//     '10th Grade',
+//     '11th Grade',
+//     '12th Grade',
+//   ];
 
-  // Preferred Stream state
-  const [selectedStream, setSelectedStream] = useState('Select Your Preferred Stream');
-  const [isStreamOpen, setIsStreamOpen] = useState(false);
-  const streamOptions = [
-    'Engineering',
-    'Medicine',
-    'Law',
-    'Business',
-    'Arts',
-    'Science',
-    'Computer Science',
-    'Humanities'
-  ];
+//   const streamOptions = [
+//     'Math',
+//     'Science',
+//     'English',
+//     'Social Studies',
+//   ];
 
-  const isContinueEnabled =
-    selectedStatus !== 'Select studying in' &&
-    selectedStream !== 'Select Your Preferred Stream';
+//   const updateAcademicProfileInline = async (details: object) => {
+//     if (!user?.id) {
+//       Alert.alert('Error', 'User ID not found. Please log in again.');
+//       return false;
+//     }
+//     console.log('Updating profile for user ID:', user.id, 'Type:', profileType); // Debug
+//     console.log('Sending academic profile:', { profileType, details }); // Matching web log
+//     setLoading(true);
+//     try {
+//       const response = await fetch(`${API_BASE_URL}/api/v1/students/${user.id}/academic-profile`, {
+//         method: 'PUT',
+//         headers: { 'Content-Type': 'application/json' },
+//         body: JSON.stringify({ profileType, details }),
+//         credentials: 'include',
+//       });
 
-  const closeAllDropdowns = () => {
-    setIsStatusOpen(false);
-    setIsStreamOpen(false);
-  };
+//       console.log('Update response status:', response.status); // Debug
 
-  return (
-    <View className="flex-1 bg-white">
-      <TouchableOpacity 
-        className="absolute top-14 left-5 w-8 h-8 justify-center items-center z-10"
-        onPress={() => router.back()}
-        activeOpacity={0.6}
-      >
-        <Ionicons name="chevron-back" size={24} color="#000000" />
-      </TouchableOpacity>
+//       if (!response.ok) {
+//         const errorText = await response.text();
+//         console.error('Update error response:', errorText); // Debug
+//         Alert.alert('Update Error', errorText || 'Failed to update profile.');
+//         return false;
+//       }
 
-      <TouchableOpacity 
-        className="absolute top-14 right-5 flex-row items-center h-8 z-10"
-        onPress={() => router.push('/home')}
-        activeOpacity={0.6}
-      >
-        <Text className="font-montserrat font-medium text-[14px] text-black leading-[17px] tracking-normal text-center">SKIP</Text>
-        <Ionicons name="chevron-forward" size={11} color="#000000" style={{marginLeft: 2.5, marginTop: 2.5}} />
-      </TouchableOpacity>
+//       const responseData = await response.json();
+//       console.log('Update success response:', responseData); // Debug
 
-      <ScrollView 
-        contentContainerStyle={{paddingHorizontal: 20, paddingTop: 56, paddingBottom: 90}}
-        showsVerticalScrollIndicator={false}
-      >
-        <View className="w-[270px] h-[10px] bg-neutral-200 rounded-[5px] mt-11 mb-6 overflow-hidden self-center">
-          <View className="w-[25%] h-full bg-primary rounded-[5px]" />
-        </View>
+//       await refreshUser();
+//       return true;
+//     } catch (error) {
+//       console.error('Update error:', error);
+//       Alert.alert('Error', 'Network error. Try again.');
+//       return false;
+//     } finally {
+//       setLoading(false);
+//     }
+//   };
 
-        <Text className="font-montserrat font-medium text-[20px] text-black leading-[20px] tracking-normal mb-5">Academic Interests</Text>
+//   const handleContinue = async () => {
+//     if (!studyingIn || !preferredStream) {
+//       Alert.alert('Incomplete', 'Please fill all fields.');
+//       return;
+//     }
 
-        <Text className="font-montserrat font-medium text-[18px] text-text leading-[22px] tracking-normal mb-3 mt-1">Academic Status</Text>
-        <View className="w-full border border-neutral-300 rounded-[12px] overflow-hidden bg-white mb-6">
-          <TouchableOpacity
-            className="h-12 flex-row items-center justify-between px-4"
-            onPress={() => {
-              setIsStatusOpen(!isStatusOpen);
-              closeAllDropdowns();
-              if (!isStatusOpen) setIsStatusOpen(true);
-            }}
-            activeOpacity={0.7}
-          >
-            <Text className={`font-montserrat font-normal text-base leading-[20px] tracking-normal flex-1 ${selectedStatus === 'Select studying in' ? 'text-neutral-400' : 'text-text'}`}>
-              {selectedStatus}
-            </Text>
-            <Ionicons 
-              name={isStatusOpen ? "chevron-up" : "chevron-down"} 
-              size={20} 
-              color="#060B13" 
-            />
-          </TouchableOpacity>
+//     const details = { studyingIn, preferredStream };
 
-          {isStatusOpen && (
-            <View className="bg-neutral-100">
-              {statusOptions.map((item) => (
-                <TouchableOpacity
-                  key={item}
-                  className="flex-row items-center px-4 py-[14px]"
-                  onPress={() => {
-                    setSelectedStatus(item);
-                    setIsStatusOpen(false);
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <View className="h-5 w-5 rounded-full border-2 border-black mr-3 justify-center items-center">
-                    {selectedStatus === item && <View className="h-[10px] w-[10px] rounded-[5px] bg-black" />}
-                  </View>
-                  <Text className="font-montserrat font-normal text-base text-text leading-[20px] tracking-normal">{item}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-        </View>
+//     const success = await updateAcademicProfileInline(details);
+//     if (success) {
+//       Alert.alert('Success', 'Tuition profile updated!');
+//       router.push('/(tabs)/home');
+//     }
+//   };
 
-        <Text className="font-montserrat font-medium text-[18px] text-text leading-[22px] tracking-normal mb-3 mt-1">Preferred Stream</Text>
-        <View className="w-full border border-neutral-300 rounded-[12px] overflow-hidden bg-white mb-6">
-          <TouchableOpacity
-            className="h-12 flex-row items-center justify-between px-4"
-            onPress={() => {
-              setIsStreamOpen(!isStreamOpen);
-              closeAllDropdowns();
-              if (!isStreamOpen) setIsStreamOpen(true);
-            }}
-            activeOpacity={0.7}
-          >
-            <Text className={`font-montserrat font-normal text-base leading-[20px] tracking-normal flex-1 ${selectedStream === 'Select Your Preferred Stream' ? 'text-neutral-400' : 'text-text'}`}>
-              {selectedStream}
-            </Text>
-            <Ionicons 
-              name={isStreamOpen ? "chevron-up" : "chevron-down"} 
-              size={20} 
-              color="#060B13" 
-            />
-          </TouchableOpacity>
+//   const closeAllDropdowns = () => {
+//     setIsStudyingOpen(false);
+//     setIsStreamOpen(false);
+//   };
 
-          {isStreamOpen && (
-            <View className="bg-neutral-100">
-              {streamOptions.map((item) => (
-                <TouchableOpacity
-                  key={item}
-                  className="flex-row items-center px-4 py-[14px]"
-                  onPress={() => {
-                    setSelectedStream(item);
-                    setIsStreamOpen(false);
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <View className="h-5 w-5 rounded-full border-2 border-black mr-3 justify-center items-center">
-                    {selectedStream === item && <View className="h-[10px] w-[10px] rounded-[5px] bg-black" />}
-                  </View>
-                  <Text className="font-montserrat font-normal text-base text-text leading-[20px] tracking-normal">{item}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-        </View>
+//   const isContinueEnabled = !!studyingIn && !!preferredStream && !loading;
 
-        <View className="flex-1 min-h-[40px]" />
-      </ScrollView>
+//   return (
+//     <ScrollView 
+//       className="flex-1 bg-white"
+//       contentContainerStyle={{paddingHorizontal: 20, paddingTop: 56, paddingBottom: 90}}
+//       showsVerticalScrollIndicator={false}
+//     >
+//       <TouchableOpacity 
+//         className="absolute top-14 left-5 w-8 h-8 justify-center items-center z-10"
+//         onPress={() => router.back()}
+//         activeOpacity={0.6}
+//         disabled={loading}
+//       >
+//         <Ionicons name="chevron-back" size={24} color="#060B13" />
+//       </TouchableOpacity>
 
-      <TouchableOpacity
-        className={`absolute bottom-[26px] left-[16.5px] w-[361px] h-12 rounded-[12px] justify-center items-center ${isContinueEnabled ? 'bg-primary' : 'bg-gray-200'}`}
-        onPress={() => isContinueEnabled && router.push('/(tabs)/home')}
-        disabled={!isContinueEnabled}
-        activeOpacity={0.8}
-      >
-        <Text className={`font-montserrat font-medium text-[18px] leading-[22px] tracking-normal text-center ${isContinueEnabled ? 'text-white' : 'text-[#C7C7C7]'}`}>
-          Continue
-        </Text>
-      </TouchableOpacity>
-    </View>
-  );
-};
+//       <TouchableOpacity 
+//         className="absolute top-14 right-5 flex-row items-center h-8 z-10"
+//         onPress={() => router.push('/(tabs)/home')}
+//         activeOpacity={0.6}
+//         disabled={loading}
+//       >
+//         <Text className="font-montserrat font-medium text-[14px] text-text leading-[17px] tracking-normal text-center">SKIP</Text>
+//         <Ionicons name="chevron-forward" size={11} color="#060B13" style={{marginLeft: 2.5, marginTop: 2.5}} />
+//       </TouchableOpacity>
 
-export default TuitionCenters;
+//       <View className="w-[270px] h-[10px] bg-neutral-200 rounded-[5px] mt-11 mb-6 overflow-hidden self-center">
+//         <View className="w-[50%] h-full bg-primary rounded-[5px]" />
+//       </View>
+
+//       <Text className="font-montserrat font-medium text-[20px] text-text leading-[20px] tracking-normal mb-5">Your Academic Profile</Text>
+
+//       <Text className="font-montserrat font-medium text-[18px] text-text leading-[22px] tracking-normal mb-3">Academic Status</Text>
+//       <View className="w-full border border-neutral-300 rounded-[12px] overflow-hidden bg-white mb-6">
+//         <TouchableOpacity
+//           className="h-12 flex-row items-center justify-between px-4"
+//           onPress={() => {
+//             setIsStudyingOpen(!isStudyingOpen);
+//             closeAllDropdowns();
+//           }}
+//           activeOpacity={0.7}
+//           disabled={loading}
+//         >
+//           <Text className={`font-montserrat font-normal text-base leading-[20px] tracking-normal flex-1 ${!studyingIn ? 'text-neutral-400' : 'text-text'}`}>
+//             {studyingIn || 'Select studying in'}
+//           </Text>
+//           <Ionicons 
+//             name={isStudyingOpen ? "chevron-up" : "chevron-down"} 
+//             size={20} 
+//             color="#060B13" 
+//           />
+//         </TouchableOpacity>
+
+//         {isStudyingOpen && (
+//           <View className="bg-neutral-100">
+//             {studyingOptions.map((item) => (
+//               <TouchableOpacity
+//                 key={item}
+//                 className="flex-row items-center px-4 py-[14px]"
+//                 onPress={() => {
+//                   setStudyingIn(item);
+//                   setIsStudyingOpen(false);
+//                 }}
+//                 activeOpacity={0.7}
+//                 disabled={loading}
+//               >
+//                 <View className="h-5 w-5 rounded-full border-2 border-text mr-3 justify-center items-center">
+//                   {studyingIn === item && <View className="h-[10px] w-[10px] rounded-[5px] bg-text" />}
+//                 </View>
+//                 <Text className="font-montserrat font-normal text-base text-text leading-[20px] tracking-normal">{item}</Text>
+//               </TouchableOpacity>
+//             ))}
+//           </View>
+//         )}
+//       </View>
+
+//       <Text className="font-montserrat font-medium text-[18px] text-text leading-[22px] tracking-normal mb-3">Preferred Stream</Text>
+//       <View className="w-full border border-neutral-300 rounded-[12px] overflow-hidden bg-white mb-6">
+//         <TouchableOpacity
+//           className="h-12 flex-row items-center justify-between px-4"
+//           onPress={() => {
+//             setIsStreamOpen(!isStreamOpen);
+//             closeAllDropdowns();
+//           }}
+//           activeOpacity={0.7}
+//           disabled={loading}
+//         >
+//           <Text className={`font-montserrat font-normal text-base leading-[20px] tracking-normal flex-1 ${!preferredStream ? 'text-neutral-400' : 'text-text'}`}>
+//             {preferredStream || 'Select Your Preferred Stream'}
+//           </Text>
+//           <Ionicons 
+//             name={isStreamOpen ? "chevron-up" : "chevron-down"} 
+//             size={20} 
+//             color="#060B13" 
+//           />
+//         </TouchableOpacity>
+
+//         {isStreamOpen && (
+//           <View className="bg-neutral-100">
+//             {streamOptions.map((item) => (
+//               <TouchableOpacity
+//                 key={item}
+//                 className="flex-row items-center px-4 py-[14px]"
+//                 onPress={() => {
+//                   setPreferredStream(item);
+//                   setIsStreamOpen(false);
+//                 }}
+//                 activeOpacity={0.7}
+//                 disabled={loading}
+//               >
+//                 <View className="h-5 w-5 rounded-full border-2 border-text mr-3 justify-center items-center">
+//                   {preferredStream === item && <View className="h-[10px] w-[10px] rounded-[5px] bg-text" />}
+//                 </View>
+//                 <Text className="font-montserrat font-normal text-base text-text leading-[20px] tracking-normal">{item}</Text>
+//               </TouchableOpacity>
+//             ))}
+//           </View>
+//         )}
+//       </View>
+
+//       <TouchableOpacity
+//         className={`self-center w-full h-12 rounded-[12px] justify-center items-center mb-10 ${isContinueEnabled ? 'bg-primary' : 'bg-gray-200'}`}
+//         onPress={handleContinue}
+//         disabled={!isContinueEnabled}
+//         activeOpacity={0.8}
+//       >
+//         <Text className={`font-montserrat font-medium text-[18px] text-center ${isContinueEnabled ? 'text-white' : 'text-gray-400'}`}>
+//           {loading ? 'Updating...' : 'Continue'}
+//         </Text>
+//       </TouchableOpacity>
+//     </ScrollView>
+//   );
+// };
+
+// export default TuitionCenters;

@@ -3,6 +3,8 @@ import { View, Text, TouchableOpacity, ScrollView, StatusBar, Image } from 'reac
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { SwipeListView } from 'react-native-swipe-list-view';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 
 // Import assets (add more images/icons here as needed)
 const EmptyIcon = require('../../assets/images/emptynotificationsicon.png');
@@ -121,35 +123,44 @@ export default function Notifications() {
 
   return (
     <>
-      <StatusBar barStyle="dark-content" />
-      <View className="flex-1 bg-[#F5F5FF]">
-        {/* Header */}
-        <View className="px-4 pt-12 pb-4 bg-[#F5F5FF]">
-          <View className="flex-row items-center">
-            <TouchableOpacity 
-              onPress={() => router.back()}
-              className="mr-4"
-            >
-              <Ionicons name="chevron-back" size={24} color="#000" />
-            </TouchableOpacity>
-            <Text className="font-Montserrat-semibold text-[20px] text-black">
-              Notifications
-            </Text>
+      <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
+      <View className="flex-1">
+        {/* Full-screen gradient background */}
+        <LinearGradient
+          colors={['#A8B5FF', '#F5F5FF']} // Top to bottom gradient
+          className="absolute inset-0"
+          pointerEvents="none"
+        />
+        
+        <SafeAreaView className="flex-1">
+          {/* Header */}
+          <View className="px-4 pb-4"> {/* Removed pt-12; SafeAreaView handles top inset */}
+            <View className="flex-row items-center">
+              <TouchableOpacity 
+                onPress={() => router.back()}
+                className="mr-4"
+              >
+                <Ionicons name="chevron-back" size={24} color="#000" />
+              </TouchableOpacity>
+              <Text className="font-Montserrat-semibold text-[20px] text-black">
+                Notifications
+              </Text>
+            </View>
           </View>
-        </View>
 
-        {/* Content */}
-        {notifications.length > 0 ? (
-          <SwipeListView
-            data={notifications}
-            renderItem={renderItem}
-            renderHiddenItem={renderHiddenItem}
-            rightOpenValue={-75}
-            disableRightSwipe={true}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16 }}
-          />
-        ) : renderEmptyState()}
+          {/* Content */}
+          {notifications.length > 0 ? (
+            <SwipeListView
+              data={notifications}
+              renderItem={renderItem}
+              renderHiddenItem={renderHiddenItem}
+              rightOpenValue={-75}
+              disableRightSwipe={true}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, flexGrow: 1 }}
+            />
+          ) : renderEmptyState()}
+        </SafeAreaView>
       </View>
     </>
   );
