@@ -1,250 +1,242 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, Image, TouchableOpacity, Animated, ScrollView, StyleSheet, Dimensions } from 'react-native';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons'; // Replace lucide-react
-import { useRouter } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { useRef, useState } from 'react';
+import {
+  View,
+  Text,
+  ImageBackground,
+  Dimensions,
+  ScrollView,
+  StatusBar,
+  Platform,
+  TouchableOpacity,
+  StyleSheet,
+} from 'react-native';
+import { Animated } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router'; // ✅ navigation hook
 
 const { width, height } = Dimensions.get('window');
 
-const OnboardingScreen = () => {
-  const [activeSlide, setActiveSlide] = useState(0);
+const slides = [
+  {
+    title: 'All Your Learning Options in One Place',
+    subtitle:
+      'Search, compare, and read reviews for thousands of courses, tuitions, and certifications from top institutions.',
+    image: require('../../assets/images/onboarding-image-1.jpg'),
+  },
+  {
+    title: 'The Perfect Path for Your Child',
+    subtitle:
+      'Easily find, compare, and enroll your child in trusted classes and tuitions. Secure their future with the best education.',
+    image: require('../../assets/images/onboarding-image-2.jpg'),
+  },
+  {
+    title: 'Find the Skills to Shape Your Future',
+    subtitle:
+      'From coding bootcamps to public speaking workshops, discover the perfect course to help you achieve your career goals.',
+    image: require('../../assets/images/onboarding-image-3.jpg'),
+  },
+];
+
+export default function OnboardingScreen() {
+  const [index, setIndex] = useState(0);
   const scrollX = useRef(new Animated.Value(0)).current;
-  const scrollViewRef = useRef(null);
+  const scrollRef = useRef<ScrollView>(null);
   const router = useRouter();
 
-  const slides = [
-    {
-      title: "All Your Learning Options in One Place",
-      description: "Search, compare, and read reviews for thousands of courses, tutors, and certifications from top institutions.",
-      image: require('@/assets/images/onboarding-image-1.jpg'), // Replace with local asset or use { uri: 'URL' }
-      buttonText: "Next",
-      bgColor: ['#60a5fa', '#3b82f6'], // Blue gradient approximation
-    },
-    {
-      title: "Find the Skills to Shape Your Future",
-      description: "From coding bootcamps to public speaking workshops, discover the perfect course to help you achieve your career goals.",
-      image: require('@/assets/images/onboarding-image-2.jpg'), // Replace with local asset
-      buttonText: "Next",
-      bgColor: ['#a78bfa', '#8b5cf6'], // Purple gradient approximation
-    },
-    {
-      title: "The Perfect Path for Your Child",
-      description: "Easily find, compare, and enroll your child in trusted classes and tuitions. Secure their future with the best education.",
-      image: require('@/assets/images/onboarding-image-3.jpg'), // Replace with local asset
-      buttonText: "Get Started",
-      bgColor: ['#34d399', '#10b981'], // Emerald gradient approximation
-    },
-  ];
-
-  const handleNext = async () => {
-    if (activeSlide < slides.length - 1) {
-      scrollViewRef.current.scrollTo({ x: width * (activeSlide + 1), animated: true });
+  const handleNext = () => {
+    if (index < slides.length - 1) {
+      scrollRef.current?.scrollTo({ x: width * (index + 1), animated: true });
     } else {
-      await AsyncStorage.setItem('@onboarding_complete', 'true');
-      router.replace('/(auth)/login');
+      router.push('/(auth)/login'); // ✅ navigate to login
     }
   };
 
-  const handleSkip = async () => {
-    await AsyncStorage.setItem('@onboarding_complete', 'true');
-    router.replace('/(auth)/login');
-  };
-
-  const handleDotPress = (index) => {
-    scrollViewRef.current.scrollTo({ x: width * index, animated: true });
-    setActiveSlide(index);
-  };
-
-  useEffect(() => {
-    const unsubscribe = scrollX.addListener(({ value }) => {
-      const index = Math.round(value / width);
-      if (index !== activeSlide) {
-        setActiveSlide(index);
-      }
-    });
-    return () => scrollX.removeListener(unsubscribe);
-  }, [activeSlide, scrollX]);
-
-  const renderPagination = () => {
-    return (
-      <View style={styles.paginationContainer}>
-        {slides.map((_, index) => {
-          const opacity = activeSlide === index ? 1 : 0.3;
-          return (
-            <TouchableOpacity
-              key={index}
-              onPress={() => handleDotPress(index)}
-              style={styles.dotContainer}
-            >
-              <View
-                style={[
-                  styles.dot,
-                  { opacity, backgroundColor: activeSlide === index ? '#1D4ED8' : '#d1d5db' },
-                ]}
-              />
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-    );
+  const handleSkip = () => {
+    router.push('/(auth)/login'); // ✅ navigate to login directly
   };
 
   return (
-    <SafeAreaProvider>
-      <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="#A8B5FF" />
+
+      {/* Gradient Background */}
+      <LinearGradient
+        colors={['#A8B5FF', '#F5F5FF']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+      />
+
+      <View style={styles.scrollContainer}>
         <ScrollView
-          ref={scrollViewRef}
+          ref={scrollRef}
           horizontal
           pagingEnabled
           showsHorizontalScrollIndicator={false}
-          onScroll={Animated.event([{ nativeEvent: { contentOffset: { x: scrollX } } }], { useNativeDriver: false })}
+          style={styles.scrollView}
+          onScroll={Animated.event(
+            [{ nativeEvent: { contentOffset: { x: scrollX } } }],
+            { useNativeDriver: false }
+          )}
+          onMomentumScrollEnd={(e) => {
+            setIndex(Math.round(e.nativeEvent.contentOffset.x / width));
+          }}
           scrollEventThrottle={16}
         >
-          {slides.map((slide, index) => (
-            <View key={index} style={styles.slide}>
-              <View
-                style={[
-                  styles.background,
-                  { backgroundColor: slide.bgColor[0] }, // Using first color as a fallback (true gradient requires linear-gradient)
-                ]}
+          {slides.map((slide, i) => (
+            <View key={i} style={styles.slide}>
+              <ImageBackground
+                source={slide.image}
+                style={styles.imageBackground}
+                imageStyle={{ resizeMode: 'cover' }}
               />
-              <View style={styles.content}>
-                <TouchableOpacity style={styles.skipButton} onPress={handleSkip}>
-                  <Text style={styles.skipText}>Skip</Text>
-                  <Ionicons name="chevron-forward" size={20} color="#FFFFFF" />
-                </TouchableOpacity>
-                <View style={styles.imageContainer}>
-                  <Image
-                    source={slide.image} // Use require for local or { uri: slide.image } for network
-                    style={styles.image}
-                    resizeMode="cover"
-                  />
-                  <View style={styles.imageOverlay} />
-                </View>
-                <View style={styles.textContainer}>
-                  <Text style={styles.title}>{slide.title}</Text>
-                  <Text style={styles.description}>{slide.description}</Text>
-                  {renderPagination()}
-                  <TouchableOpacity style={styles.button} onPress={handleNext}>
-                    <Text style={styles.buttonText}>{slide.buttonText}</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
             </View>
           ))}
         </ScrollView>
-      </SafeAreaView>
-    </SafeAreaProvider>
-  );
-};
 
+        {/* Bottom Content Card */}
+        <View style={styles.contentCard}>
+          <Text style={styles.title}>{slides[index].title}</Text>
+          <Text style={styles.subtitle}>{slides[index].subtitle}</Text>
+
+          {/* Pagination Dots */}
+          <View style={styles.dotsContainer}>
+            {slides.map((_, dotIndex) => (
+              <View
+                key={dotIndex}
+                style={[
+                  styles.dot,
+                  index === dotIndex && styles.activeDot,
+                  { transform: [{ scale: index === dotIndex ? 1.2 : 1 }] },
+                ]}
+              />
+            ))}
+          </View>
+
+          {/* Actions */}
+          <View style={styles.actionsContainer}>
+            <TouchableOpacity onPress={handleSkip}>
+              <Text style={styles.skipText}>SKIP</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={handleNext} style={styles.nextButton}>
+              <Text style={styles.arrowText}>→</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </SafeAreaView>
+  );
+}
+
+/* ──────────────────────────────
+   ✅ STYLES
+──────────────────────────────── */
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#F5F5FF',
+  },
+  scrollContainer: {
+    flex: 1,
+    position: 'relative',
+  },
+  scrollView: {
+    height: height * 0.65,
   },
   slide: {
     width,
-    height,
+    height: height * 0.65,
   },
-  background: {
-    ...StyleSheet.absoluteFillObject,
-    opacity: 0.3,
-  },
-  content: {
+  imageBackground: {
     flex: 1,
-    justifyContent: 'space-between',
+    width: '100%',
   },
-  skipButton: {
+  contentCard: {
     position: 'absolute',
-    top: 50,
-    right: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    zIndex: 10,
-  },
-  skipText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-    marginRight: 5,
-  },
-  imageContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingTop: 20,
-    paddingBottom: 8,
-  },
-  image: {
-    width: 320,
-    height: 384,
-    borderRadius: 48,
-    overflow: 'hidden',
-    borderWidth: 8,
-    borderColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 8,
-  },
-  imageOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.2)',
-    borderRadius: 48,
-  },
-  textContainer: {
+    bottom: 0,
+    left: 0,
+    right: 0,
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
-    padding: 24,
-    alignItems: 'center',
+    paddingHorizontal: 32,
+    paddingTop: 32,
+    paddingBottom: 32,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 20,
+    elevation: 12,
   },
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#000000',
+    fontFamily: 'Montserrat',
+    fontWeight: '600',
+    fontSize: 32,
+    lineHeight: 32,
+    color: '#1C1C1E',
     textAlign: 'center',
-    marginBottom: 8,
+    letterSpacing: 0,
+    marginBottom: 12,
   },
-  description: {
+  subtitle: {
+    fontFamily: 'Montserrat',
     fontSize: 14,
-    color: '#666666',
+    lineHeight: 14,
+    fontWeight: '500',
+    color: '#A4A4A4',
     textAlign: 'center',
-    marginBottom: 20,
+    maxWidth: 330,
+    alignSelf: 'center',
+    marginBottom: 32,
   },
-  paginationContainer: {
+  dotsContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginBottom: 20,
-  },
-  dotContainer: {
-    marginHorizontal: 5,
+    marginBottom: 24,
   },
   dot: {
     width: 8,
     height: 8,
     borderRadius: 4,
+    backgroundColor: '#E5E5E7',
+    marginHorizontal: 4,
   },
-  button: {
-    backgroundColor: '#1D4ED8',
-    borderRadius: 12,
-    paddingVertical: 14,
-    width: '100%',
+  activeDot: {
+    backgroundColor: '#007AFF',
+  },
+  actionsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 10,
+    marginTop: 20,
+    paddingHorizontal: 8,
   },
-  buttonText: {
+  skipText: {
+    fontFamily: 'Montserrat',
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#060B13',
+    letterSpacing: 0,
+  },
+  nextButton: {
+    width: 56,
+    height: 56,
+    backgroundColor: '#007AFF',
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#007AFF',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 15,
+  },
+  arrowText: {
+    fontSize: 24,
     color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: 'bold',
+    marginTop: Platform.OS === 'android' ? -2 : 0,
   },
 });
-
-export default OnboardingScreen;
