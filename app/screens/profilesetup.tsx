@@ -2,6 +2,7 @@
 
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import React, {
   useCallback,
@@ -24,8 +25,16 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+// ============================================
+// SECTION: API AND CONFIGURATION
+// ============================================
+
 // Updated API_BASE_URL
 const API_BASE_URL = "https://tooclarity.onrender.com/api";
+
+// ============================================
+// SECTION: CUSTOM HOOKS
+// ============================================
 
 // Simulated useAuth (replace with actual)
 const useAuth = () => {
@@ -34,17 +43,34 @@ const useAuth = () => {
   const setProfileCompleted = (completed: boolean) => updateUser({ isProfileCompleted: completed });
   const refreshUser = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/v1/profile`, { credentials: 'include' });
-      if (res.ok) {
-        const profile = await res.json();
-        setUser(profile.data);
+      const storedCookie = await AsyncStorage.getItem('authCookie') || '';
+      const res = await fetch(`${API_BASE_URL}/v1/profile`, { 
+        credentials: 'include',
+        headers: {
+          ...(storedCookie && { 'Cookie': storedCookie }),
+        },
+      });
+      const text = await res.text();
+      let data;
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        data = { message: text };
       }
+      if (!res.ok) {
+        throw new Error(data?.message || 'Failed to refresh user');
+      }
+      setUser(data.data || data);
     } catch (e) {
       console.error('Refresh user error:', e);
     }
   };
   return { user, updateUser, setProfileCompleted, refreshUser };
 };
+
+// ============================================
+// SECTION: ASSETS
+// ============================================
 
 // Assets
 const coachingcenters = require('@/assets/images/coachingcenters.png');
@@ -57,9 +83,17 @@ const studyabroad = require('@/assets/images/studyabroad.png');
 const studyhalls = require('@/assets/images/studyhalls.png');
 const tuitioncenter = require('@/assets/images/tuitioncenter.png');
 
+// ============================================
+// SECTION: TYPES
+// ============================================
+
 // Types
 type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
 interface Errors { [key: string]: string | undefined; }
+
+// ============================================
+// SECTION: VALIDATION FUNCTIONS
+// ============================================
 
 // Validation
 const NAME_REGEX = /^[A-Za-z][A-Za-z ]{0,78}[A-Za-z]$/;
@@ -101,6 +135,10 @@ function formatISOToDDMMYYYY(iso?: string | null): string {
   return `${dd}/${mm}/${yyyy}`;
 }
 
+// ============================================
+// SECTION: INTERESTS DATA
+// ============================================
+
 // Interests
 const interests = [
   { key: "KINDERGARTEN", label: "Kindergarten", img: kindergarten },
@@ -113,20 +151,46 @@ const interests = [
   { key: "STUDY_ABROAD", label: "Study\nAbroad", img: studyabroad },
 ];
 
+// ============================================
+// SECTION: HELPER FUNCTIONS
+// ============================================
+
+// Helper to get stored cookie
+async function getStoredCookie(): Promise<string> {
+  return await AsyncStorage.getItem('authCookie') || '';
+}
+
+// ============================================
+// SECTION: S3 UPLOAD FUNCTIONS
+// ============================================
+
 // S3
 interface PresignedUrlResponse { uploadUrl: string; }
 interface UploadResult { success: boolean; fileUrl?: string; error?: string; }
 
 async function getPresignedUrl(filename: string, filetype: string): Promise<string> {
+  const storedCookie = await getStoredCookie();
   const res = await fetch(`${API_BASE_URL}/s3/upload-url`, {
     method: "POST",
     credentials: "include",
-    headers: { "Content-Type": "application/json" },
+    headers: { 
+      "Content-Type": "application/json",
+      ...(storedCookie && { 'Cookie': storedCookie }),
+    },
     body: JSON.stringify({ filename, filetype }),
   });
-  if (!res.ok) throw new Error(`Failed to get presigned URL (${res.status})`);
-  const data: PresignedUrlResponse = await res.json();
-  return data.uploadUrl;
+  const text = await res.text();
+  let data;
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    data = { message: text };
+  }
+  if (!res.ok) {
+    throw new Error(data?.message || `Failed to get presigned URL (${res.status})`);
+  }
+  const presigned: PresignedUrlResponse = data;
+  return presigned.uploadUrl;
 }
 
 async function uploadToS3(file: any): Promise<UploadResult> {
@@ -137,7 +201,10 @@ async function uploadToS3(file: any): Promise<UploadResult> {
       headers: { "Content-Type": file.type || 'image/jpeg' },
       body: file,
     });
-    if (!uploadResponse.ok) throw new Error(`Failed to upload file to S3 (${uploadResponse.status})`);
+    const text = await uploadResponse.text();
+    if (!uploadResponse.ok) {
+      throw new Error(text || `Failed to upload file to S3 (${uploadResponse.status})`);
+    }
     const fileUrl = uploadURL.split("?")[0];
     return { success: true, fileUrl };
   } catch (error: unknown) {
@@ -146,12 +213,27 @@ async function uploadToS3(file: any): Promise<UploadResult> {
   }
 }
 
-// API
+// ============================================
+// SECTION: API FUNCTIONS
+// ============================================
+
 async function getProfileFallback(user: any): Promise<any> {
   try {
-    const res = await fetch(`${API_BASE_URL}/v1/profile`, { credentials: 'include' });
-    if (!res.ok) throw new Error('Failed to fetch profile');
-    const data = await res.json();
+    const storedCookie = await getStoredCookie();
+    const res = await fetch(`${API_BASE_URL}/v1/profile`, { 
+      credentials: 'include',
+      headers: {
+        ...(storedCookie && { 'Cookie': storedCookie }),
+      },
+    });
+    const text = await res.text();
+    let data;
+    try {
+      data = text ? JSON.parse(text) : {};
+    } catch {
+      data = { message: text };
+    }
+    if (!res.ok) throw new Error(data?.message || 'Failed to fetch profile');
     return data.data || data;
   } catch (e) {
     console.warn('Profile fetch failed, using user store', e);
@@ -160,31 +242,61 @@ async function getProfileFallback(user: any): Promise<any> {
 }
 
 async function updateStudent(id: string, payload: any): Promise<any> {
+  const storedCookie = await getStoredCookie();
   const res = await fetch(`${API_BASE_URL}/v1/students/${encodeURIComponent(id)}`, {
     method: "PUT",
     credentials: 'include',
-    headers: { "Content-Type": "application/json" },
+    headers: { 
+      "Content-Type": "application/json",
+      ...(storedCookie && { 'Cookie': storedCookie }),
+    },
     body: JSON.stringify(payload),
   });
-  if (!res.ok) throw new Error('Failed to update student');
-  return await res.json();
+  const text = await res.text();
+  let data;
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    data = { message: text };
+  }
+  if (!res.ok) throw new Error(data?.message || 'Failed to update student');
+  return data;
 }
 
 async function updateAcademicProfile(id: string, payload: any): Promise<any> {
+  const storedCookie = await getStoredCookie();
   const res = await fetch(`${API_BASE_URL}/v1/students/${encodeURIComponent(id)}/academic-profile`, {
     method: "PUT",
     credentials: 'include',
-    headers: { "Content-Type": "application/json" },
+    headers: { 
+      "Content-Type": "application/json",
+      ...(storedCookie && { 'Cookie': storedCookie }),
+    },
     body: JSON.stringify(payload),
   });
-  if (!res.ok) throw new Error('Failed to update academic profile');
-  return await res.json();
+  const text = await res.text();
+  let data;
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    data = { message: text };
+  }
+  if (!res.ok) throw new Error(data?.message || 'Failed to update academic profile');
+  return data;
 }
+
+// ============================================
+// SECTION: MAIN COMPONENT - ProfileSetup
+// ============================================
 
 // Component
 const ProfileSetup: React.FC = () => {
   const router = useRouter();
   const { user, updateUser, setProfileCompleted, refreshUser } = useAuth();
+
+  // ============================================
+  // SUBSECTION: STATE DECLARATIONS
+  // ============================================
 
   const [step, setStep] = useState<Step>(1);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -218,7 +330,13 @@ const ProfileSetup: React.FC = () => {
   const [showAllCountries, setShowAllCountries] = useState(false);
   const [countrySearch, setCountrySearch] = useState("");
 
+  // ============================================
+  // SUBSECTION: COUNTRY DATA AND HELPERS
+  // ============================================
+
   const topDestinations = ["USA","Australia","UK","Canada","Ireland","Germany"];
+  const popular = ["New Zealand","France","Sweden","Netherlands","Italy","Singapore"];
+  const moreOptions = ["Austria","Spain","Switzerland","Lithuania","Poland","Malaysia","Japan","UAE","Finland"];
   const allCountries = [
     "USA","Australia","UK","Canada","Ireland","Germany",
     "New Zealand","France","Sweden","Netherlands","Italy","Singapore",
@@ -231,6 +349,12 @@ const ProfileSetup: React.FC = () => {
     Austria: "🇦🇹", Spain: "🇪🇸", Switzerland: "🇨🇭", Lithuania: "🇱🇹", Poland: "🇵🇱", Malaysia: "🇲🇾",
     Japan: "🇯🇵", UAE: "🇦🇪", Finland: "🇫🇮",
   };
+
+  const matches = (q: string, name: string) => name.toLowerCase().includes(q.trim().toLowerCase());
+
+  // ============================================
+  // SUBSECTION: MEMOIZED COACHING STREAM OPTIONS
+  // ============================================
 
   const coachingStreamOptions = useMemo(() => {
     switch (academicLevel) {
@@ -250,6 +374,10 @@ const ProfileSetup: React.FC = () => {
   }, [academicLevel]);
 
   useEffect(() => { setStream(""); }, [academicLevel]);
+
+  // ============================================
+  // SUBSECTION: USE EFFECTS
+  // ============================================
 
   useEffect(() => {
     let mounted = true;
@@ -280,6 +408,10 @@ const ProfileSetup: React.FC = () => {
     return () => { mounted = false; };
   }, [user, fullName, birthday, location]);
 
+  // ============================================
+  // SUBSECTION: MEMOIZED PROGRESS PERCENTAGE
+  // ============================================
+
   const progressPct = useMemo(() => {
     if (step < 5) return 12;
     if (step === 5) return 25;
@@ -287,6 +419,10 @@ const ProfileSetup: React.FC = () => {
     if (step === 7) return 75;
     return 100;
   }, [step]);
+
+  // ============================================
+  // SUBSECTION: VALIDATION CALLBACKS
+  // ============================================
 
   const validatePersonal = useCallback(() => {
     const nextErrors: Record<string, string> = {};
@@ -303,6 +439,10 @@ const ProfileSetup: React.FC = () => {
   const canContinuePersonal = useMemo(() => {
     return !validateNameInstant(fullName) && !validateDateInstant(birthday, true) && !validateLocationInstant(location);
   }, [fullName, birthday, location]);
+
+  // ============================================
+  // SUBSECTION: AVATAR HANDLING
+  // ============================================
 
   const onPickAvatar = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -325,6 +465,10 @@ const ProfileSetup: React.FC = () => {
       setAvatarUrl(uri);
     }
   };
+
+  // ============================================
+  // SUBSECTION: PROFILE PICTURE PERSISTENCE
+  // ============================================
 
   const persistProfilePictureIfNeeded = useCallback(async (studentIdParam?: string) => {
     try {
@@ -383,6 +527,10 @@ const ProfileSetup: React.FC = () => {
       return { success: false, message: msg } as const;
     }
   }, [avatarFile, avatarUrl, studentId, updateUser, refreshUser]);
+
+  // ============================================
+  // SUBSECTION: CONTINUE HANDLER
+  // ============================================
 
   const handleContinue = async () => {
     setErrors(prev => ({ ...prev, submit: undefined, interest: undefined }));
@@ -491,6 +639,10 @@ const ProfileSetup: React.FC = () => {
     }
   };
 
+  // ============================================
+  // SUBSECTION: VALIDATION FUNCTIONS FOR ACADEMIC FORMS
+  // ============================================
+
   const validateAcademicForm = (): string | null => {
     switch (selectedInterest) {
       case "KINDERGARTEN":
@@ -538,6 +690,10 @@ const ProfileSetup: React.FC = () => {
     if (!passportStatus) return "Please specify your passport status";
     return null;
   };
+
+  // ============================================
+  // SUBSECTION: ACADEMIC PROFILE SUBMISSION
+  // ============================================
 
   const submitAcademicProfile = async () => {
     setSubmitting(true);
@@ -614,6 +770,10 @@ const ProfileSetup: React.FC = () => {
       setSubmitting(false);
     }
   };
+
+  // ============================================
+  // SUBSECTION: UI SUB-COMPONENTS
+  // ============================================
 
   // UI Components
   const ProgressBar = () => (
@@ -713,6 +873,10 @@ const ProfileSetup: React.FC = () => {
     </TouchableOpacity>
   );
 
+  // ============================================
+  // SUBSECTION: RENDER FUNCTIONS FOR STEPS
+  // ============================================
+
   // Render functions
   const renderPersonalForm = () => (
     <>
@@ -780,8 +944,11 @@ const ProfileSetup: React.FC = () => {
   const renderAcademicForm = () => {
     if (!selectedInterest) return <Text className="text-center text-gray-500">Please select an academic interest to continue.</Text>;
     switch (selectedInterest) {
+      // CATEGORY: KINDERGARTEN
       case "KINDERGARTEN":
         return <RadioGroup label="Academic Status" value={academicStatus} onChange={setAcademicStatus} options={["Currently in Kindergarten", "Completed Kindergarten", "Seeking Admission to Kindergarten"]} error={errors.academicStatus} />;
+
+      // CATEGORY: SCHOOL
       case "SCHOOL":
         return (
           <>
@@ -791,6 +958,8 @@ const ProfileSetup: React.FC = () => {
             <Dropdown value={preferredStream} onChange={setPreferredStream} options={["MPC (Engineering)","BiPC (Medical)","CEC (Commerce)","HEC (History)","Other's","Not Decided"]} placeholder="Select Your Preferred Stream" error={errors.preferredStream} />
           </>
         );
+
+      // CATEGORY: INTERMEDIATE
       case "INTERMEDIATE":
         return (
           <>
@@ -800,6 +969,8 @@ const ProfileSetup: React.FC = () => {
             <Dropdown value={preferredStream} onChange={setPreferredStream} options={["Engineering (B.E./B.Tech.)","Medical Sciences","Arts and Humanities (B.A.)","Science (B.Sc.)","Commerce (B.Com.)","Business Administration (BBA)","Computer Applications (BCA)","Fine Arts (BFA)","Law (L.L.B./Integrated Law Courses)","Other's"]} placeholder="Select Your Preferred Stream" error={errors.preferredStream} />
           </>
         );
+
+      // CATEGORY: GRADUATION
       case "GRADUATION":
         return (
           <>
@@ -822,6 +993,8 @@ const ProfileSetup: React.FC = () => {
             )}
           </>
         );
+
+      // CATEGORY: COACHING_CENTER
       case "COACHING_CENTER":
         return (
           <>
@@ -833,6 +1006,8 @@ const ProfileSetup: React.FC = () => {
             <InputField label="Passout Year" value={passoutYear} onChange={setPassoutYear} placeholder="Enter year" error={errors.passoutYear} keyboardType="numeric" maxLength={4} />
           </>
         );
+
+      // CATEGORY: TUITION_CENTER
       case "TUITION_CENTER":
         return (
           <>
@@ -842,6 +1017,8 @@ const ProfileSetup: React.FC = () => {
             <Dropdown value={preferredStream} onChange={setPreferredStream} options={["Math","Science","English","Social Studies"]} placeholder="Select Your Preferred Stream" error={errors.preferredStream} />
           </>
         );
+
+      // CATEGORY: STUDY_ABROAD (Step 6)
       case "STUDY_ABROAD":
         return (
           <>
@@ -868,13 +1045,18 @@ const ProfileSetup: React.FC = () => {
             )}
           </>
         );
+
+      // CATEGORY: STUDY_HALLS
       case "STUDY_HALLS":
         return <Text className="text-center text-gray-500 mt-4">No additional details needed for Study Halls.</Text>;
+
+      // DEFAULT CASE
       default:
         return <Text className="text-center text-gray-500">Please select an academic interest to continue.</Text>;
     }
   };
 
+  // CATEGORY: STUDY_ABROAD (Step 7)
   const renderStudyAbroadStep2 = () => (
     <>
       <InputField
@@ -937,35 +1119,100 @@ const ProfileSetup: React.FC = () => {
                 value={countrySearch}
                 onChangeText={setCountrySearch}
               />
-              <Ionicons name="search" size={16} color="#9CA3AF" style={{ position: 'absolute', left: 12, top: 12 }} />
+              <Ionicons name="search" size={16} color="#9CA3AF" style={{ position: 'absolute', left: 12, top: 6 }} />
             </View>
           </View>
-          <FlatList
-            data={allCountries.filter((c) => c.toLowerCase().includes(countrySearch.toLowerCase()))}
-            numColumns={3}
-            keyExtractor={(item) => item}
-            renderItem={({ item }) => {
-              const selected = preferredCountries.includes(item);
-              return (
-                <TouchableOpacity
-                  onPress={() => {
-                    setPreferredCountries((prev) => {
-                      if (prev.includes(item)) return prev.filter((c) => c !== item);
-                      if (prev.length >= 3) return prev;
-                      return [...prev, item];
-                    });
-                  }}
-                  className={`flex-1 h-18 m-1 rounded-xl border items-center justify-center ${selected ? 'border-[#0A46E4] bg-[#0A46E4]/5' : 'border-[#E5E7EB]'}`}
-                >
-                  <Text className="text-2xl">{_countryToFlag[item]}</Text>
-                  <Text className="text-xs font-semibold mt-1">{item}</Text>
-                </TouchableOpacity>
-              );
-            }}
-            style={{ maxHeight: 240 }}
-          />
-          <TouchableOpacity onPress={() => setShowAllCountries(false)} className="w-full h-11 rounded-xl bg-[#0A46E4] items-center justify-center mt-3">
-            <Text className="text-white font-medium">Done</Text>
+          {topDestinations.filter(c => matches(countrySearch, c)).length > 0 && (
+            <>
+              <Text className="text-xs font-semibold mb-2">Top Destinations</Text>
+              <FlatList
+                data={topDestinations.filter(c => matches(countrySearch, c))}
+                numColumns={3}
+                keyExtractor={(item) => item}
+                renderItem={({ item }) => {
+                  const selected = preferredCountries.includes(item);
+                  return (
+                    <TouchableOpacity
+                      onPress={() => {
+                        setPreferredCountries((prev) => {
+                          if (prev.includes(item)) return prev.filter((c) => c !== item);
+                          if (prev.length >= 3) return prev;
+                          return [...prev, item];
+                        });
+                      }}
+                      className={`flex-1 h-18 m-1 rounded-xl border items-center justify-center ${selected ? 'border-[#0A46E4] bg-[#0A46E4]/5' : 'border-[#E5E7EB]'}`}
+                    >
+                      <Text className="text-2xl">{_countryToFlag[item]}</Text>
+                      <Text className="text-xs font-semibold mt-1">{item}</Text>
+                    </TouchableOpacity>
+                  );
+                }}
+              />
+            </>
+          )}
+          {popular.filter(c => matches(countrySearch, c)).length > 0 && (
+            <>
+              <Text className="text-xs font-semibold mb-2 mt-4">Other Popular Choices</Text>
+              <FlatList
+                data={popular.filter(c => matches(countrySearch, c))}
+                numColumns={3}
+                keyExtractor={(item) => item}
+                renderItem={({ item }) => {
+                  const selected = preferredCountries.includes(item);
+                  return (
+                    <TouchableOpacity
+                      onPress={() => {
+                        setPreferredCountries((prev) => {
+                          if (prev.includes(item)) return prev.filter((c) => c !== item);
+                          if (prev.length >= 3) return prev;
+                          return [...prev, item];
+                        });
+                      }}
+                      className={`flex-1 h-18 m-1 rounded-xl border items-center justify-center ${selected ? 'border-[#0A46E4] bg-[#0A46E4]/5' : 'border-[#E5E7EB]'}`}
+                    >
+                      <Text className="text-2xl">{_countryToFlag[item]}</Text>
+                      <Text className="text-xs font-semibold mt-1">{item}</Text>
+                    </TouchableOpacity>
+                  );
+                }}
+              />
+            </>
+          )}
+          {moreOptions.filter(c => matches(countrySearch, c)).length > 0 && (
+            <>
+              <Text className="text-xs font-semibold mb-2 mt-4">More Options</Text>
+              <FlatList
+                data={moreOptions.filter(c => matches(countrySearch, c))}
+                numColumns={3}
+                keyExtractor={(item) => item}
+                renderItem={({ item }) => {
+                  const selected = preferredCountries.includes(item);
+                  return (
+                    <TouchableOpacity
+                      onPress={() => {
+                        setPreferredCountries((prev) => {
+                          if (prev.includes(item)) return prev.filter((c) => c !== item);
+                          if (prev.length >= 3) return prev;
+                          return [...prev, item];
+                        });
+                      }}
+                      className={`flex-1 h-18 m-1 rounded-xl border items-center justify-center ${selected ? 'border-[#0A46E4] bg-[#0A46E4]/5' : 'border-[#E5E7EB]'}`}
+                      style={{ maxHeight: 200 }}
+                    >
+                      <Text className="text-2xl">{_countryToFlag[item]}</Text>
+                      <Text className="text-xs font-semibold mt-1">{item}</Text>
+                    </TouchableOpacity>
+                  );
+                }}
+              />
+            </>
+          )}
+          <TouchableOpacity 
+            onPress={() => setShowAllCountries(false)} 
+            disabled={preferredCountries.length === 0}
+            className={`w-full h-11 rounded-xl items-center justify-center mt-3 ${preferredCountries.length === 0 ? 'bg-gray-200' : 'bg-[#0A46E4]'}`}
+          >
+            <Text className={`font-medium ${preferredCountries.length === 0 ? 'text-gray-500' : 'text-white'}`}>Done</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -980,6 +1227,10 @@ const ProfileSetup: React.FC = () => {
       />
     </>
   );
+
+  // ============================================
+  // SUBSECTION: MAIN RENDER
+  // ============================================
 
   return (
     <SafeAreaView className="flex-1 bg-[#F5F6F9]">

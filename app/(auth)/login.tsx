@@ -12,6 +12,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Google from 'expo-auth-session/providers/google';
@@ -20,9 +21,26 @@ import TooClarityLogo from '../../assets/images/Tooclaritylogo.png';
 import GoogleLogo from '../../assets/images/google-logo.png';
 import { useAuth } from '../lib/auth-context';
 
-const API_BASE_URL = 'https://tooclarity.onrender.com'; // Updated to Render URL for consistency
+const API_BASE_URL = 'http://192.168.19.101:3001'; // Updated to local URL for development to match server logs
 
 const { width } = Dimensions.get('window');
+
+// Helper function to parse Set-Cookie headers into a Cookie header value
+function parseCookies(setCookieHeader: string | null | string[]): string {
+  if (!setCookieHeader) return '';
+  const setCookies = Array.isArray(setCookieHeader) ? setCookieHeader : [setCookieHeader];
+  const cookies: string[] = [];
+  for (const cookieStr of setCookies) {
+    const parts = cookieStr.split(';');
+    if (parts.length > 0) {
+      const nameValue = parts[0].trim();
+      if (nameValue) {
+        cookies.push(nameValue);
+      }
+    }
+  }
+  return cookies.join('; ');
+}
 
 export default function StudentLogin() {
   const router = useRouter();
@@ -60,12 +78,12 @@ export default function StudentLogin() {
   };
 
   // redirect user after login (with id check)
-  const navigateAfterLogin = () => {
-    if (!user || !user.id) {
+  const navigateAfterLogin = (tempUser: any) => {
+    if (!tempUser || !tempUser.id) {
       Alert.alert('Error', 'User profile not loaded. Please try again.');
       return;
     }
-    if (user && !user.isProfileCompleted) {
+    if (!tempUser.isProfileCompleted) {
       router.replace('/screens/profilesetup');
     } else {
       router.replace('/(tabs)/home');
@@ -123,10 +141,50 @@ export default function StudentLogin() {
         return;
       }
 
-      // Success - refresh user and ensure id is set
-      await refreshUser();
-      console.log('[Login] Login successful, user ID:', user?.id);
-      navigateAfterLogin();
+      // Extract and store cookies manually to fix RN/Expo cookie sharing issue
+      const setCookieHeader = res.headers.get('set-cookie');
+      const cookieValue = parseCookies(setCookieHeader);
+      if (cookieValue) {
+        await AsyncStorage.setItem('authCookie', cookieValue);
+        console.log('[Login] Stored cookie:', cookieValue);
+      }
+
+      // Manually fetch profile with the cookie to bypass store issue
+      const storedCookie = await AsyncStorage.getItem('authCookie') || '';
+      const profileRes = await fetch(`${API_BASE_URL}/api/v1/profile`, {
+        method: 'GET',
+        credentials: 'include', // Still include for any other cookies
+        headers: {
+          ...(storedCookie && { 'Cookie': storedCookie }),
+        },
+      });
+
+      console.log('[Login] Profile response status:', profileRes.status);
+
+      if (!profileRes.ok) {
+        const profileText = await profileRes.text();
+        console.log('[Login] Profile error text:', profileText);
+        setError('Login successful but failed to load profile. Please try again.');
+        return;
+      }
+
+      const profileData = await profileRes.json();
+      console.log('[Login] Profile data:', profileData);
+
+      // Fixed extraction: profile response has { data: { id, isProfileCompleted, ... }, ... }
+      const tempUser = profileData.data || profileData.user || profileData;
+      if (!tempUser || !tempUser.id) {
+        setError('Invalid user data received.');
+        return;
+      }
+
+      console.log('[Login] Login successful, user ID:', tempUser.id);
+
+      // TODO: Update auth store (authStore.ts) to read 'authCookie' from AsyncStorage and add 'Cookie' header to all authenticated fetches
+      // For now, skip refreshUser to avoid "Session invalid" error; manually navigate using tempUser
+      // await refreshUser(); // Commented out to prevent error until store is fixed
+
+      navigateAfterLogin(tempUser);
     } catch (err) {
       console.error('[Login] Error:', err);
       setError('An error occurred during login. Please try again.');
@@ -168,9 +226,48 @@ export default function StudentLogin() {
         return;
       }
 
-      await refreshUser();
-      console.log('[Google] Login successful via Google, user ID:', user?.id);
-      navigateAfterLogin();
+      // Extract and store cookies manually
+      const setCookieHeader = res.headers.get('set-cookie');
+      const cookieValue = parseCookies(setCookieHeader);
+      if (cookieValue) {
+        await AsyncStorage.setItem('authCookie', cookieValue);
+        console.log('[Google] Stored cookie:', cookieValue);
+      }
+
+      // Manually fetch profile
+      const storedCookie = await AsyncStorage.getItem('authCookie') || '';
+      const profileRes = await fetch(`${API_BASE_URL}/api/v1/profile`, {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          ...(storedCookie && { 'Cookie': storedCookie }),
+        },
+      });
+
+      console.log('[Google] Profile response status:', profileRes.status);
+
+      if (!profileRes.ok) {
+        const profileText = await profileRes.text();
+        console.log('[Google] Profile error text:', profileText);
+        Alert.alert('Error', 'Google login successful but failed to load profile');
+        return;
+      }
+
+      const profileData = await profileRes.json();
+      console.log('[Google] Profile data:', profileData);
+
+      // Fixed extraction: profile response has { data: { id, isProfileCompleted, ... }, ... }
+      const tempUser = profileData.data || profileData.user || profileData;
+      if (!tempUser || !tempUser.id) {
+        Alert.alert('Error', 'Invalid user data received.');
+        return;
+      }
+
+      console.log('[Google] Login successful via Google, user ID:', tempUser.id);
+
+      // TODO: Same as above for auth store
+
+      navigateAfterLogin(tempUser);
     } catch (err) {
       console.error('[Google] Login error:', err);
       Alert.alert('Error', 'Google login failed');
