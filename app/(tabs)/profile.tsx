@@ -13,9 +13,7 @@ import {
   Alert,
   RefreshControl,
 } from "react-native";
-import { router } from "expo-router";
-import { useAuthStore } from "../types/authStore"; // updated auth store
-import { API_BASE_URL } from "../../utils/constant";
+import { useRouter } from "expo-router";
 import {
   ChevronLeft,
   User,
@@ -33,84 +31,75 @@ import ProgramsVisitedIcon from "../../assets/images/programsvisitedicon.png";
 import WishlistIcon from "../../assets/images/wishlistcoloricon.png";
 import RequestsRaisedIcon from "../../assets/images/requestsraised.png";
 
+// ========================
+// API CONFIG
+// ========================
+const API_BASE_URL = "https://tooclarity.onrender.com/api"; // your API base
+
+// ========================
+// Profile Setup Screen
+// ========================
 export default function ProfileSetupScreen() {
-  const { user, refreshUser, logout } = useAuthStore();
-  const [loading, setLoading] = useState(true);
+  const router = useRouter();
+
   const [userData, setUserData] = useState<any>(null);
-  const [refreshing, setRefreshing] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [showPicAlert, setShowPicAlert] = useState(false);
   const [hasShownAlert, setHasShownAlert] = useState(false);
 
-  /** Fetch profile inline */
-  const fetchProfileInline = useCallback(async () => {
+  /** Fetch latest user profile */
+  const fetchUserProfile = useCallback(async () => {
+    setLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/profile`, {
+      const token = await getAuthToken(); // replace with your auth token retrieval
+      if (!token) throw new Error("No auth token found");
+
+      const res = await fetch(`${API_BASE_URL}/v1/profile`, {
         method: "GET",
-        credentials: "include",
         headers: {
+          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
       });
 
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const res = await response.json();
-      const data = res?.data || res;
-      return {
-        id: data?.id || data?._id || "",
-        name: data?.name || "",
-        email: data?.email || "",
-        phoneNumber: data?.contactNumber || "",
-        profilePicture: data?.profilePicture || data?.ProfilePicutre || null,
-        birthday: data?.birthday || null,
-      };
-    } catch (err) {
-      console.error("❌ fetchProfileInline error:", err);
-      return null;
-    }
-  }, []);
-
-  /** Load user data */
-  const fetchUserData = useCallback(async () => {
-    setLoading(true);
-    try {
-      await refreshUser();
-      const profile = await fetchProfileInline();
-      if (!profile) return;
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      const profile = data?.data || data;
 
       setUserData(profile);
-      if (profile.profilePicture) setAvatarUrl(profile.profilePicture);
-      else if (!hasShownAlert) {
+      setAvatarUrl(profile?.profilePicture || null);
+
+      if (!profile?.profilePicture && !hasShownAlert) {
         setShowPicAlert(true);
         setHasShownAlert(true);
       }
-    } catch (err) {
-      console.error("❌ fetchUserData error:", err);
+    } catch (err: any) {
+      console.error("❌ fetchUserProfile error:", err.message);
+      Alert.alert("Error", "Failed to fetch profile. Please try again.");
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [fetchProfileInline, refreshUser, hasShownAlert]);
+  }, [hasShownAlert]);
 
   useEffect(() => {
-    fetchUserData();
+    fetchUserProfile();
   }, []);
 
   /** Pull-to-refresh */
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchUserData();
+    await fetchUserProfile();
   };
 
-  /** Missing profile picture alert */
+  /** Profile picture missing alert */
   useEffect(() => {
     if (showPicAlert) {
       Alert.alert("Profile Picture Missing", "Update your profile pic, it's missing!", [
-        { text: "OK", style: "default" },
-        {
-          text: "Edit Profile",
-          onPress: handleEditProfile,
-        },
+        { text: "OK" },
+        { text: "Edit Profile", onPress: handleEditProfile },
       ]);
       setShowPicAlert(false);
     }
@@ -118,17 +107,15 @@ export default function ProfileSetupScreen() {
 
   /** Edit profile */
   const handleEditProfile = () => {
-    Alert.alert(
-      "Coming Soon 🚧",
-      "Profile editing is under progress.\nPlease go back for now.",
-      [{ text: "OK" }]
-    );
+    Alert.alert("Coming Soon 🚧", "Profile editing is under progress.\nPlease go back for now.", [
+      { text: "OK" },
+    ]);
   };
 
   /** Logout */
   const handleLogout = async () => {
     try {
-      await logout();
+      await clearAuthToken(); // implement your logout logic
       router.replace("/(auth)/login");
     } catch (err) {
       console.error("❌ Logout failed:", err);
@@ -158,7 +145,6 @@ export default function ProfileSetupScreen() {
         <View style={tw.headerSpacer} />
       </View>
 
-      {/* Scrollable content */}
       <ScrollView
         contentContainerStyle={tw.scrollContainer}
         showsVerticalScrollIndicator={false}
@@ -171,7 +157,6 @@ export default function ProfileSetupScreen() {
               source={avatarUrl ? { uri: avatarUrl } : PlaceholderProfile}
               style={tw.profileImage}
               resizeMode="cover"
-              onError={() => console.warn("⚠️ Failed to load profile image")}
             />
           </View>
           <Text style={tw.nameText}>{userData?.name || "User"}</Text>
@@ -186,9 +171,9 @@ export default function ProfileSetupScreen() {
         {/* Stats Section */}
         <View style={tw.statsContainer}>
           {[
-            { icon: ProgramsVisitedIcon, value: 42, label: "Programs Visited" },
-            { icon: WishlistIcon, value: 5, label: "Wishlist" },
-            { icon: RequestsRaisedIcon, value: 7, label: "Requests Raised" },
+            { icon: ProgramsVisitedIcon, value: userData?.programsVisited || 0, label: "Programs Visited" },
+            { icon: WishlistIcon, value: userData?.wishlistCount || 0, label: "Wishlist" },
+            { icon: RequestsRaisedIcon, value: userData?.requestsRaised || 0, label: "Requests Raised" },
           ].map((item, idx) => (
             <View style={tw.statItem} key={idx}>
               <View style={tw.statIconBox}>
@@ -235,42 +220,42 @@ export default function ProfileSetupScreen() {
 
 /** Styles */
 const tw = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: "#EEF2FF",
-    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: "#EEF2FF",
-  },
+  safeArea: { flex: 1, backgroundColor: "#EEF2FF", paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0 },
+  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, paddingVertical: 16, backgroundColor: "#EEF2FF" },
   backButton: { width: 40, height: 40, justifyContent: "center", alignItems: "center" },
-  headerTitle: { fontSize: 18, fontWeight: "600", color: "#1F2937", fontFamily: "montserrat-semibold" },
+  headerTitle: { fontSize: 18, fontWeight: "600", color: "#1F2937" },
   headerSpacer: { width: 40 },
 
   scrollContainer: { paddingHorizontal: 20, paddingBottom: 40 },
   profileSection: { alignItems: "center", marginTop: 20, marginBottom: 32 },
   profileImageContainer: { width: 120, height: 120, borderRadius: 60, overflow: "hidden", marginBottom: 16, backgroundColor: "#fff", borderWidth: 3, borderColor: "#fff" },
   profileImage: { width: "100%", height: "100%" },
-  nameText: { fontSize: 20, fontWeight: "600", color: "#111827", marginBottom: 8, fontFamily: "montserrat-semibold" },
+  nameText: { fontSize: 20, fontWeight: "600", color: "#111827", marginBottom: 8 },
   emailContainer: { flexDirection: "row", alignItems: "center", gap: 8 },
-  emailText: { fontSize: 14, color: "#6B7280", fontFamily: "montserrat-regular" },
+  emailText: { fontSize: 14, color: "#6B7280" },
   editButton: { padding: 4 },
 
   statsContainer: { flexDirection: "row", justifyContent: "space-between", marginBottom: 32, gap: 12 },
   statItem: { flex: 1, alignItems: "center", backgroundColor: "#fff", borderRadius: 12, paddingVertical: 16, paddingHorizontal: 8, shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 },
   statIconBox: { width: 48, height: 48, borderRadius: 8, backgroundColor: "#F3F4F6", justifyContent: "center", alignItems: "center", marginBottom: 8 },
   statIcon: { width: 28, height: 28 },
-  statValue: { fontSize: 20, fontWeight: "600", color: "#111827", marginBottom: 4, fontFamily: "montserrat-semibold" },
-  statLabel: { fontSize: 12, color: "#6B7280", textAlign: "center", fontFamily: "montserrat-regular" },
+  statValue: { fontSize: 20, fontWeight: "600", color: "#111827", marginBottom: 4 },
+  statLabel: { fontSize: 12, color: "#6B7280", textAlign: "center" },
 
   menuContainer: { gap: 12 },
   menuItem: { backgroundColor: "#fff", borderRadius: 12, paddingVertical: 16, paddingHorizontal: 16, flexDirection: "row", justifyContent: "space-between", alignItems: "center", shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 },
   menuLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
   menuIconContainer: { width: 24, height: 24, justifyContent: "center", alignItems: "center" },
-  menuText: { fontSize: 16, color: "#374151", fontWeight: "500", fontFamily: "montserrat-medium" },
+  menuText: { fontSize: 16, color: "#374151", fontWeight: "500" },
 });
+
+/** Placeholder functions for auth token handling - implement in your app */
+async function getAuthToken(): Promise<string | null> {
+  // TODO: replace with your secure storage / token retrieval
+  return "REPLACE_WITH_REAL_TOKEN";
+}
+
+async function clearAuthToken() {
+  // TODO: clear token from storage
+  console.log("Auth token cleared");
+}
