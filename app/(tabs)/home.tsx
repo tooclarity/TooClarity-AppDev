@@ -530,127 +530,204 @@
 //     </TouchableOpacity>
 //   );
 // };
-// app/screens/HomeScreen.tsx
+import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  FlatList,
   Image,
-  ScrollView,
-  StatusBar,
   Text,
   ToastAndroid,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import { useAuthStore } from '../types/authStore';
-import Header from '../screens/HeaderComponent';
-import SearchBar from '../screens/globalsearchbarcomponent';
-import SchoolDetailsComponent from '../screens/SchoolDetailsComponent';
-import FiltersComponent from '../screens/FiltersComponent';
 
-type School = {
-  id: string;
-  name: string;
-  location: string;
-  description: string;
-  fees: string;
-  duration: string;
-  image: string;
-  logo: string;
-  category: string;
-  curriculumType: string;
-  estDate: string;
-  timing: string;
-  about: string;
-  operationalDays: string[];
-  additionalFeatures: Array<{ icon: string; label: string; value: string }>;
-  facilities: Array<{ icon: string; label: string; value: string }>;
-  bannerImage: string;
-  bannerText: string;
+// ──────────────────────────────────────────────────────────────
+//  YOUR ORIGINAL COMPONENTS
+// ──────────────────────────────────────────────────────────────
+import FiltersComponent from '../screens/FiltersComponent';
+import SearchBar from '../screens/globalsearchbarcomponent';
+import Header from '../screens/HeaderComponent';
+import SchoolDetailsComponent from '../screens/SchoolDetailsComponent';
+
+// ──────────────────────────────────────────────────────────────
+//  API
+// ──────────────────────────────────────────────────────────────
+const studentDashboardAPI = {
+  getVisibleCourses: async (): Promise<any[]> => {
+    try {
+      const res = await fetch('http://192.168.19.101:3001/api/v1/public/courses');
+      const json = await res.json();
+      if (json.success && json.data) return json.data;
+      throw new Error(json.message || 'Failed to fetch');
+    } catch (err: any) {
+      throw new Error(err.message || 'Network error');
+    }
+  },
+};
+
+// ──────────────────────────────────────────────────────────────
+//  TRANSFORM API → UI (REAL DATA ONLY)
+// ──────────────────────────────────────────────────────────────
+const transformCourse = (apiCourse: any, wishlisted: boolean): any => {
+  const price = apiCourse.priceOfCourse ?? 0;
+  const duration = apiCourse.courseDuration ?? 'N/A';
+  const image = apiCourse.imageUrl ?? 'https://via.placeholder.com/400x250';
+  const logo = apiCourse.institution?.instituteLogo ?? 'https://via.placeholder.com/30';
+
+  return {
+    id: apiCourse._id,
+    name: apiCourse.courseName ?? 'Untitled Course',
+    description: apiCourse.aboutCourse ?? '',
+    fees: `₹${price.toLocaleString()}`,
+    duration,
+    image,
+    logo,
+    mode: apiCourse.mode ?? 'Online',
+    wishlisted,
+    priceRange: getPriceRange(price),
+    instituteType: 'Kindergarten',
+  };
+};
+
+const getPriceRange = (p: number): string => {
+  if (p < 75000) return "Below ₹75,000";
+  if (p <= 150000) return "₹75,000 - ₹1,50,000";
+  if (p <= 300000) return "₹1,50,000 - ₹3,00,000";
+  return "Above ₹3,00,000";
 };
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { user, refreshUser } = useAuthStore();
 
+  // ───── State ─────
   const [loading, setLoading] = useState(true);
   const [profilePic, setProfilePic] = useState<string | null>(null);
-  const [academicProfile, setAcademicProfile] = useState<any>(null);
   const [showPicAlert, setShowPicAlert] = useState(false);
   const [hasShownAlert, setHasShownAlert] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedSchool, setSelectedSchool] = useState<School | null>(null);
+  const [selectedSchool, setSelectedSchool] = useState<any>(null);
   const [showFilters, setShowFilters] = useState(false);
 
-  // Filter states
-  const [selectedInstitute, setSelectedInstitute] = useState('');
-  const [selectedLevels, setSelectedLevels] = useState<string[]>([]);
-  const [selectedModes, setSelectedModes] = useState<string[]>([]);
+  const [courses, setCourses] = useState<any[]>([]);
+  const [filteredCourses, setFilteredCourses] = useState<any[]>([]);
+  const [displayedCourses, setDisplayedCourses] = useState<any[]>([]);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const COURSES_PER_PAGE = 6;
 
-  const toggleLevel = (level: string) => {
-    setSelectedLevels((prev) =>
-      prev.includes(level) ? prev.filter((l) => l !== level) : [...prev, level]
-    );
+  const [activeFilters, setActiveFilters] = useState({
+    instituteType: "",
+    modes: [] as string[],
+    priceRange: [] as string[],
+  });
+
+  const user = { name: "Student" };
+
+  // ───── GET INITIALS (required by Header & Filters) ─────
+  const getInitials = (name: string): string => {
+    return name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'US';
   };
 
-  const toggleMode = (mode: string) => {
-    setSelectedModes((prev) =>
-      prev.includes(mode) ? prev.filter((m) => m !== mode) : [...prev, mode]
-    );
+  // ───── Wishlist ─────
+  const getWishlistedIds = async (): Promise<Set<string>> => {
+    try {
+      const saved = await AsyncStorage.getItem('wishlistedCourses');
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch { return new Set(); }
+  };
+
+  const saveWishlistedIds = async (ids: Set<string>) => {
+    try { await AsyncStorage.setItem('wishlistedCourses', JSON.stringify(Array.from(ids))); }
+    catch (e) { console.error(e); }
+  };
+
+  // ───── Fetch Courses ─────
+  const fetchCourses = useCallback(async () => {
+    try {
+      setLoading(true);
+      const data = await studentDashboardAPI.getVisibleCourses();
+      const wishIds = await getWishlistedIds();
+      const transformed = data.map((c: any) => transformCourse(c, wishIds.has(c._id)));
+      setCourses(transformed);
+      setFilteredCourses(transformed);
+      setDisplayedCourses(transformed.slice(0, COURSES_PER_PAGE));
+      setCurrentPage(1);
+    } catch (err: any) {
+      ToastAndroid.show(err.message || "Failed to load courses", ToastAndroid.LONG);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchCourses(); }, [fetchCourses]);
+
+  // ───── Load More ─────
+  const loadMore = () => {
+    if (loadingMore || displayedCourses.length >= filteredCourses.length) return;
+    setLoadingMore(true);
+    const next = currentPage + 1;
+    const end = next * COURSES_PER_PAGE;
+    setDisplayedCourses(filteredCourses.slice(0, end));
+    setCurrentPage(next);
+    setLoadingMore(false);
+  };
+
+  // ───── Filter Logic ─────
+  const filterCourses = useCallback((query: string, filters: typeof activeFilters, src: any[]) => {
+    let res = src;
+    if (query.trim()) {
+      const q = query.toLowerCase();
+      res = res.filter((c: any) =>
+        c.name.toLowerCase().includes(q) || c.description.toLowerCase().includes(q)
+      );
+    }
+    if (filters.instituteType) res = res.filter((c: any) => c.instituteType === filters.instituteType);
+    if (filters.modes.length) res = res.filter((c: any) => filters.modes.includes(c.mode));
+    if (filters.priceRange.length) res = res.filter((c: any) => filters.priceRange.includes(c.priceRange));
+    setFilteredCourses(res);
+    setDisplayedCourses(res.slice(0, COURSES_PER_PAGE));
+    setCurrentPage(1);
+  }, []);
+
+  useEffect(() => {
+    filterCourses(searchQuery, activeFilters, courses);
+  }, [searchQuery, activeFilters, courses, filterCourses]);
+
+  // ───── Wishlist Toggle ─────
+  const toggleWishlist = async (id: string) => {
+    const ids = await getWishlistedIds();
+    const was = ids.has(id);
+    if (was) ids.delete(id); else ids.add(id);
+    await saveWishlistedIds(ids);
+    const upd = (list: any[]) => list.map(c => c.id === id ? { ...c, wishlisted: !c.wishlisted } : c);
+    setCourses(upd); setFilteredCourses(upd); setDisplayedCourses, setDisplayedCourses(upd);
+  };
+
+  // ───── Filter Handlers ─────
+  const handleFilterChange = (type: string, value: string, checked: boolean) => {
+    const upd = { ...activeFilters };
+    if (type === "instituteType") upd.instituteType = checked ? value : "";
+    else {
+      const key = type as keyof typeof upd;
+      const arr = upd[key] as string[];
+      if (checked && !arr.includes(value)) arr.push(value);
+      else if (!checked) upd[key] = arr.filter(v => v !== value) as any;
+    }
+    setActiveFilters(upd);
   };
 
   const clearAllFilters = () => {
-    setSelectedInstitute('');
-    setSelectedLevels([]);
-    setSelectedModes([]);
+    setActiveFilters({ instituteType: "", modes: [], priceRange: [] });
   };
 
-  const fetchFilteredResults = () => {
-    console.log('Fetching filtered results...');
-    setShowFilters(false);
-  };
-
-  // Dummy data
-  const schools: School[] = [
-    {
-      id: '1',
-      name: 'Bachpan Play School',
-      location: 'Jubilee Hills',
-      description: 'Blending learning and technology, Bachpan is the best preschool',
-      fees: '₹2.67L',
-      duration: '1 year',
-      image: 'https://images.unsplash.com/photo-1503454537195-1dcabb73ffb9?w=400&h=250&fit=crop',
-      logo: 'https://via.placeholder.com/30x30/red/ffffff?text=B',
-      category: 'FS Kindergarten',
-      curriculumType: 'CBSE',
-      estDate: 'Est July 2012',
-      timing: '9 AM - 4 PM',
-      about: 'Lorem ipsum simply dummy text of the printing and typesetting industry.',
-      operationalDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-      additionalFeatures: [
-        { icon: 'school', label: 'Government', value: 'Yes' },
-        { icon: 'people', label: 'Only Girls', value: 'No' },
-      ],
-      facilities: [
-        { icon: 'home', label: 'Hostel Facility', value: 'Yes' },
-        { icon: 'bus', label: 'Bus Service', value: 'Yes' },
-      ],
-      bannerImage:
-        'https://images.unsplash.com/photo-1503454537195-1dcabb73ffb9?w=400&h=250&fit=crop',
-      bannerText: 'Bachpan Sirf Aata Hai',
-    },
-  ];
-
-  const getInitials = (name: string) =>
-    name?.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2) || 'US';
-
+  // ───── Profile Alert ─────
   const fetchProfileInline = useCallback(async () => {
     try {
-      const d = { profilePicture: null, academicProfile: { profileType: 'SCHOOL' } };
-      return { profilePicture: d.profilePicture, academicProfile: d.academicProfile };
+      return { profilePicture: null };
     } catch {
       ToastAndroid.show('Failed to load profile', ToastAndroid.SHORT);
       return {};
@@ -659,46 +736,78 @@ export default function HomeScreen() {
 
   useEffect(() => {
     const init = async () => {
-      if (!user?.id) {
-        setLoading(false);
-        return;
-      }
-      await refreshUser();
-      const { profilePicture, academicProfile } = await fetchProfileInline();
-      setAcademicProfile(academicProfile);
+      const { profilePicture } = await fetchProfileInline();
       if (profilePicture) setProfilePic(profilePicture);
-      else if (!hasShownAlert) {
-        setShowPicAlert(true);
-        setHasShownAlert(true);
-      }
+      else if (!hasShownAlert) { setShowPicAlert(true); setHasShownAlert(true); }
       setLoading(false);
     };
     init();
-  }, [user?.id, refreshUser, fetchProfileInline, hasShownAlert]);
+  }, [fetchProfileInline, hasShownAlert]);
 
   useEffect(() => {
     if (showPicAlert) {
       Alert.alert('Profile Picture Missing', "Update your profile pic, it's missing!", [
-        { text: 'OK', style: 'default' },
+        { text: 'OK' },
         { text: 'Edit Profile', onPress: () => router.push('/screens/profilesetup') },
       ]);
       setShowPicAlert(false);
     }
   }, [showPicAlert, router]);
 
+  // ───── Render Course Card ─────
+  const renderSchool = ({ item }: { item: any }) => (
+    <View className="mb-8 rounded-[8.7px] overflow-hidden border border-gray-200 bg-white">
+      <Image source={{ uri: item.image }} className="w-full h-[202px]" />
+      <View className="absolute bottom-0 left-0 right-0 bg-black/50 px-4 py-3">
+        <View className="flex-row items-center mb-1">
+          <Image source={{ uri: item.logo }} className="w-6 h-6 rounded mr-2" />
+          <Text className="font-Montserrat-semibold text-white text-[14px] flex-1">
+            {item.name}
+          </Text>
+          <TouchableOpacity onPress={() => toggleWishlist(item.id)}>
+            <Ionicons
+              name={item.wishlisted ? "bookmark" : "bookmark-outline"}
+              size={20}
+              color="white"
+            />
+          </TouchableOpacity>
+        </View>
+        <Text className="font-Montserrat-regular text-white text-[12px] mb-1">
+          {item.description}
+        </Text>
+        <View className="flex-row justify-between">
+          <Text className="font-Montserrat-medium text-white text-[12px]">
+            Total Fees {item.fees}
+          </Text>
+          <Text className="font-Montserrat-medium text-white text-[12px]">
+            Duration: {item.duration}
+          </Text>
+        </View>
+      </View>
+      <TouchableOpacity
+        className="bg-[#0222D7] py-3 px-4 mt-[-1px]"
+        onPress={() => setSelectedSchool(item)}
+      >
+        <Text className="font-Montserrat-semibold text-white text-center text-[16px]">
+          View Details
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  // ───── Loading ─────
   if (loading) {
     return (
       <View className="flex-1 justify-center items-center bg-[#F5F5FF]">
         <ActivityIndicator size="large" color="#0A46E4" />
-        <Text className="mt-4 text-gray-600 font-Montserrat-regular text-base">Loading profile...</Text>
+        <Text className="mt-4 text-gray-600 font-Montserrat-regular text-base">Loading...</Text>
       </View>
     );
   }
 
   return (
     <View className="flex-1 bg-[#F5F5FF] px-4 pt-12">
-      <StatusBar hidden />
-
+      {/* HEADER */}
       <Header
         user={user}
         profilePic={profilePic}
@@ -707,7 +816,7 @@ export default function HomeScreen() {
         showFilters={showFilters}
       />
 
-      {/* SEARCH BAR AND FILTER - Always visible, separated */}
+      {/* SEARCH */}
       {!selectedSchool && !showFilters && (
         <SearchBar
           searchQuery={searchQuery}
@@ -717,63 +826,43 @@ export default function HomeScreen() {
         />
       )}
 
-      {/* SCHOOL LIST */}
+      {/* LIST */}
       {!selectedSchool && !showFilters && (
-        <ScrollView contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
-          {schools.map((school) => (
-            <View
-              key={school.id}
-              className="mb-8 rounded-[8.7px] overflow-hidden border border-gray-200 bg-white"
-            >
-              <Image source={{ uri: school.image }} className="w-full h-[202px]" />
-              <View className="absolute bottom-0 left-0 right-0 bg-black/50 px-4 py-3">
-                <View className="flex-row items-center mb-1">
-                  <Image source={{ uri: school.logo }} className="w-6 h-6 rounded mr-2" />
-                  <Text className="font-Montserrat-semibold text-white text-[14px] flex-1">
-                    {school.name}
-                  </Text>
-                  <Ionicons name="bookmark-outline" size={20} color="white" />
-                </View>
-                <Text className="font-Montserrat-regular text-white text-[12px] mb-1">
-                  {school.description}
-                </Text>
-                <View className="flex-row justify-between">
-                  <Text className="font-Montserrat-medium text-white text-[12px]">
-                    Total Fees {school.fees}
-                  </Text>
-                  <Text className="font-Montserrat-medium text-white text-[12px]">
-                    Duration: {school.duration}
-                  </Text>
-                </View>
-              </View>
-              <TouchableOpacity
-                className="bg-[#0222D7] py-3 px-4 mt-[-1px]"
-                onPress={() => setSelectedSchool(school)}
-              >
-                <Text className="font-Montserrat-semibold text-white text-center text-[16px]">
-                  View Details
-                </Text>
-              </TouchableOpacity>
+        <FlatList
+          data={displayedCourses}
+          renderItem={renderSchool}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={{ paddingBottom: 100 }}
+          showsVerticalScrollIndicator={false}
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.4}
+          ListFooterComponent={loadingMore ? <ActivityIndicator style={{ marginVertical: 20 }} /> : null}
+          ListEmptyComponent={
+            <View className="items-center py-10">
+              <Text className="text-gray-500 font-Montserrat-regular">
+                No courses found.
+              </Text>
             </View>
-          ))}
-        </ScrollView>
+          }
+        />
       )}
 
-      {/* DETAILS OR FILTERS SECTION */}
+      {/* DETAILS */}
       {selectedSchool && (
         <SchoolDetailsComponent school={selectedSchool} onClose={() => setSelectedSchool(null)} />
       )}
 
+      {/* FILTERS */}
       {showFilters && (
         <FiltersComponent
-          selectedInstitute={selectedInstitute}
-          selectedLevels={selectedLevels}
-          selectedModes={selectedModes}
-          onInstituteChange={setSelectedInstitute}
-          onLevelChange={toggleLevel}
-          onModeChange={toggleMode}
+          selectedInstitute={activeFilters.instituteType}
+          selectedLevels={[]}
+          selectedModes={activeFilters.modes}
+          onInstituteChange={(val) => handleFilterChange('instituteType', val, activeFilters.instituteType !== val)}
+          onLevelChange={() => {}}
+          onModeChange={(val) => handleFilterChange('modes', val, !activeFilters.modes.includes(val))}
           onClear={clearAllFilters}
-          onShowResults={fetchFilteredResults}
+          onShowResults={() => setShowFilters(false)}
           onClose={() => setShowFilters(false)}
           user={user}
           profilePic={profilePic}
