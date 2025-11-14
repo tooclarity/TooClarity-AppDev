@@ -8,7 +8,6 @@ import {
   ActivityIndicator,
   Alert,
   StyleSheet,
-  Dimensions,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
@@ -21,188 +20,106 @@ import TooClarityLogo from '../../assets/images/Tooclaritylogo.png';
 import GoogleLogo from '../../assets/images/google-logo.png';
 import { useAuth } from '../lib/auth-context';
 
-const API_BASE_URL = 'http://192.168.19.101:3001'; // Updated to local URL for development to match server logs
-
-const { width } = Dimensions.get('window');
-
-// Helper function to parse Set-Cookie headers into a Cookie header value
-function parseCookies(setCookieHeader: string | null | string[]): string {
-  if (!setCookieHeader) return '';
-  const setCookies = Array.isArray(setCookieHeader) ? setCookieHeader : [setCookieHeader];
-  const cookies: string[] = [];
-  for (const cookieStr of setCookies) {
-    const parts = cookieStr.split(';');
-    if (parts.length > 0) {
-      const nameValue = parts[0].trim();
-      if (nameValue) {
-        cookies.push(nameValue);
-      }
-    }
-  }
-  return cookies.join('; ');
-}
+// Use process.env for API base URL
+const API_BASE_URL = process.env.API_BASE_URL || 'http://192.168.5.101:3001'; 
 
 export default function StudentLogin() {
   const router = useRouter();
-
-  // from AuthContext
   const { refreshUser, user } = useAuth();
 
-  // Google Auth setup
+  // Google Auth setup with env variables
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
-    clientId: '906583664549-c22ppjehvg75mi0ea89up61jbh139u9c.apps.googleusercontent.com',
+    clientId: process.env.EXPO_CLIENT_ID || '',
+    iosClientId: process.env.IOS_CLIENT_ID || '',
+    androidClientId: process.env.ANDROID_CLIENT_ID || '',
+    webClientId: process.env.WEB_CLIENT_ID || '',
   });
 
-  // Local state
   const [formData, setFormData] = useState({ contactNumber: '', password: '' });
   const [isLoading, setIsLoading] = useState(false);
   const [loadingProvider, setLoadingProvider] = useState<null | 'google'>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // handle Google OAuth response
   useEffect(() => {
     if (response?.type === 'success') {
       const { id_token } = response.params;
       handleGoogleLogin(id_token);
     } else if (response?.type === 'error') {
-      console.log('[Google OAuth] Error:', response);
       Alert.alert('Error', 'Google sign-in cancelled or failed');
       setLoadingProvider(null);
     }
   }, [response]);
 
-  // input handling
   const handleInputChange = (name: string, value: string) => {
     setFormData(prev => ({ ...prev, [name]: value }));
     if (error) setError(null);
   };
 
-  // redirect user after login (with id check)
   const navigateAfterLogin = (tempUser: any) => {
-    if (!tempUser || !tempUser.id) {
+    if (!tempUser?.id) {
       Alert.alert('Error', 'User profile not loaded. Please try again.');
       return;
     }
-    if (!tempUser.isProfileCompleted) {
-      router.replace('/screens/profilesetup');
-    } else {
-      router.replace('/(tabs)/home');
-    }
+    router.replace(tempUser.isProfileCompleted ? '/(tabs)/home' : '/screens/profilesetup');
   };
 
-  // normal login with direct fetch
   const handleSubmit = async () => {
     if (!formData.contactNumber || !formData.password) {
       setError('Please enter mobile number and password');
       return;
     }
-
     setIsLoading(true);
     setError(null);
-
-    console.log('[Login] Attempting login with:', formData.contactNumber);
-
-    const loginData = {
-      contactNumber: formData.contactNumber,
-      password: formData.password,
-      type: 'student',
-    };
-
-    console.log('[Login] Sending payload:', loginData);
 
     try {
       const res = await fetch(`${API_BASE_URL}/api/v1/auth/login`, {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(loginData),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...formData, type: 'student' }),
         credentials: 'include',
       });
 
       const text = await res.text();
-      console.log('[Login] Response status:', res.status, 'Text:', text);
-
-      let data;
-      try {
-        data = text ? JSON.parse(text) : {};
-      } catch {
-        data = { message: text };
-      }
+      const data = text ? JSON.parse(text) : {};
 
       if (!res.ok) {
-        let errMsg = 'Login failed. Please check your credentials.';
-        if (data && Array.isArray(data.errors)) {
-          errMsg = data.errors.map((e: any) => e.msg).join('; ');
-        } else if (data && data.message) {
-          errMsg = data.message;
-        }
-        setError(errMsg);
+        setError(data?.message || 'Login failed');
         return;
       }
 
-      // Extract and store cookies manually to fix RN/Expo cookie sharing issue
+      // Save cookies
       const setCookieHeader = res.headers.get('set-cookie');
-      const cookieValue = parseCookies(setCookieHeader);
-      if (cookieValue) {
-        await AsyncStorage.setItem('authCookie', cookieValue);
-        console.log('[Login] Stored cookie:', cookieValue);
-      }
+      if (setCookieHeader) await AsyncStorage.setItem('authCookie', setCookieHeader);
 
-      // Manually fetch profile with the cookie to bypass store issue
-      const storedCookie = await AsyncStorage.getItem('authCookie') || '';
+      const storedCookie = (await AsyncStorage.getItem('authCookie')) || '';
       const profileRes = await fetch(`${API_BASE_URL}/api/v1/profile`, {
         method: 'GET',
-        credentials: 'include', // Still include for any other cookies
-        headers: {
-          ...(storedCookie && { 'Cookie': storedCookie }),
-        },
+        credentials: 'include',
+        headers: { ...(storedCookie && { Cookie: storedCookie }) },
       });
 
-      console.log('[Login] Profile response status:', profileRes.status);
-
-      if (!profileRes.ok) {
-        const profileText = await profileRes.text();
-        console.log('[Login] Profile error text:', profileText);
-        setError('Login successful but failed to load profile. Please try again.');
-        return;
-      }
-
       const profileData = await profileRes.json();
-      console.log('[Login] Profile data:', profileData);
-
-      // Fixed extraction: profile response has { data: { id, isProfileCompleted, ... }, ... }
       const tempUser = profileData.data || profileData.user || profileData;
-      if (!tempUser || !tempUser.id) {
+
+      if (!tempUser?.id) {
         setError('Invalid user data received.');
         return;
       }
 
-      console.log('[Login] Login successful, user ID:', tempUser.id);
-
-      // TODO: Update auth store (authStore.ts) to read 'authCookie' from AsyncStorage and add 'Cookie' header to all authenticated fetches
-      // For now, skip refreshUser to avoid "Session invalid" error; manually navigate using tempUser
-      // await refreshUser(); // Commented out to prevent error until store is fixed
-
       navigateAfterLogin(tempUser);
-    } catch (err) {
-      console.error('[Login] Error:', err);
+    } catch (err: any) {
       setError('An error occurred during login. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Google login
   const handleGoogleClick = async () => {
-    console.log('[Google] Initiating Google login...');
     setLoadingProvider('google');
     await promptAsync({ showInRecents: true });
   };
 
-  // Google login handler
   const handleGoogleLogin = async (idToken: string) => {
-    console.log('[Google] Logging in with ID token:', idToken ? 'present' : 'missing');
     try {
       const res = await fetch(`${API_BASE_URL}/api/v1/auth/google`, {
         method: 'POST',
@@ -212,72 +129,37 @@ export default function StudentLogin() {
       });
 
       const text = await res.text();
-      console.log('[Google] Response status:', res.status, 'Text:', text);
-
       if (!res.ok) {
-        let data;
-        try {
-          data = text ? JSON.parse(text) : {};
-        } catch {
-          data = { message: text };
-        }
-        const errMsg = data?.message || text || 'Google login failed';
-        Alert.alert('Error', errMsg);
+        const data = text ? JSON.parse(text) : {};
+        Alert.alert('Error', data?.message || 'Google login failed');
         return;
       }
 
-      // Extract and store cookies manually
       const setCookieHeader = res.headers.get('set-cookie');
-      const cookieValue = parseCookies(setCookieHeader);
-      if (cookieValue) {
-        await AsyncStorage.setItem('authCookie', cookieValue);
-        console.log('[Google] Stored cookie:', cookieValue);
-      }
+      if (setCookieHeader) await AsyncStorage.setItem('authCookie', setCookieHeader);
 
-      // Manually fetch profile
-      const storedCookie = await AsyncStorage.getItem('authCookie') || '';
+      const storedCookie = (await AsyncStorage.getItem('authCookie')) || '';
       const profileRes = await fetch(`${API_BASE_URL}/api/v1/profile`, {
         method: 'GET',
         credentials: 'include',
-        headers: {
-          ...(storedCookie && { 'Cookie': storedCookie }),
-        },
+        headers: { ...(storedCookie && { Cookie: storedCookie }) },
       });
 
-      console.log('[Google] Profile response status:', profileRes.status);
-
-      if (!profileRes.ok) {
-        const profileText = await profileRes.text();
-        console.log('[Google] Profile error text:', profileText);
-        Alert.alert('Error', 'Google login successful but failed to load profile');
-        return;
-      }
-
       const profileData = await profileRes.json();
-      console.log('[Google] Profile data:', profileData);
-
-      // Fixed extraction: profile response has { data: { id, isProfileCompleted, ... }, ... }
       const tempUser = profileData.data || profileData.user || profileData;
-      if (!tempUser || !tempUser.id) {
+
+      if (!tempUser?.id) {
         Alert.alert('Error', 'Invalid user data received.');
         return;
       }
 
-      console.log('[Google] Login successful via Google, user ID:', tempUser.id);
-
-      // TODO: Same as above for auth store
-
       navigateAfterLogin(tempUser);
     } catch (err) {
-      console.error('[Google] Login error:', err);
       Alert.alert('Error', 'Google login failed');
     } finally {
       setLoadingProvider(null);
     }
   };
-
-  const loginButtonDisabled = isLoading || !formData.contactNumber || !formData.password;
-  const googleButtonDisabled = loadingProvider === 'google';
 
   return (
     <KeyboardAvoidingView
@@ -309,8 +191,6 @@ export default function StudentLogin() {
             value={formData.contactNumber}
             onChangeText={text => handleInputChange('contactNumber', text)}
             keyboardType="phone-pad"
-            autoCapitalize="none"
-            editable={!isLoading}
           />
         </View>
 
@@ -322,14 +202,13 @@ export default function StudentLogin() {
             value={formData.password}
             onChangeText={text => handleInputChange('password', text)}
             secureTextEntry
-            editable={!isLoading}
           />
         </View>
 
         <TouchableOpacity
-          style={[styles.submitButton, loginButtonDisabled && styles.disabledButton]}
+          style={[styles.submitButton, (isLoading || !formData.contactNumber || !formData.password) && styles.disabledButton]}
           onPress={handleSubmit}
-          disabled={loginButtonDisabled}>
+          disabled={isLoading || !formData.contactNumber || !formData.password}>
           {isLoading && <ActivityIndicator color="#FFFFFF" size="small" />}
           <Text style={styles.submitButtonText}>
             {isLoading ? 'Logging in...' : 'Login'}
@@ -350,18 +229,20 @@ export default function StudentLogin() {
         </View>
 
         <TouchableOpacity
-          style={[styles.oauthButton, googleButtonDisabled && styles.disabledButton]}
+          style={[styles.oauthButton, loadingProvider === 'google' && styles.disabledButton]}
           onPress={handleGoogleClick}
-          disabled={googleButtonDisabled}>
-          <Image source={GoogleLogo} style={styles.googleIcon} resizeMode="contain" />
+          disabled={loadingProvider === 'google'}>
+          <Image source={GoogleLogo} style={styles.googleIcon} />
           <Text style={styles.oauthButtonText}>
-            {googleButtonDisabled ? 'Loading Google...' : 'Continue with Google'}
+            {loadingProvider === 'google' ? 'Loading Google...' : 'Continue with Google'}
           </Text>
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
   );
 }
+
+// Styles remain the same as your previous file
 
 // Styling
 const styles = StyleSheet.create({

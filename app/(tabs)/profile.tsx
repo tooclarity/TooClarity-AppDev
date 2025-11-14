@@ -10,8 +10,8 @@ import {
   Platform,
   StatusBar,
   StyleSheet,
-  Alert,
   RefreshControl,
+  Alert,
 } from "react-native";
 import { useRouter } from "expo-router";
 import {
@@ -25,101 +25,63 @@ import {
   Edit2,
 } from "lucide-react-native";
 
+import { useAuth } from "../lib/auth-context";
+
 // 🖼️ Assets
 import PlaceholderProfile from "../../assets/images/placeholder-profile.png";
 import ProgramsVisitedIcon from "../../assets/images/programsvisitedicon.png";
 import WishlistIcon from "../../assets/images/wishlistcoloricon.png";
 import RequestsRaisedIcon from "../../assets/images/requestsraised.png";
 
-// ========================
-// API CONFIG
-// ========================
-const API_BASE_URL = "https://tooclarity.onrender.com/api"; // your API base
-
-// ========================
-// Profile Setup Screen
-// ========================
 export default function ProfileSetupScreen() {
   const router = useRouter();
-
-  const [userData, setUserData] = useState<any>(null);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { user, loading, refreshUser, logout } = useAuth();
   const [refreshing, setRefreshing] = useState(false);
   const [showPicAlert, setShowPicAlert] = useState(false);
   const [hasShownAlert, setHasShownAlert] = useState(false);
 
-  /** Fetch latest user profile */
-  const fetchUserProfile = useCallback(async () => {
-    setLoading(true);
-    try {
-      const token = await getAuthToken(); // replace with your auth token retrieval
-      if (!token) throw new Error("No auth token found");
-
-      const res = await fetch(`${API_BASE_URL}/v1/profile`, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      const profile = data?.data || data;
-
-      setUserData(profile);
-      setAvatarUrl(profile?.profilePicture || null);
-
-      if (!profile?.profilePicture && !hasShownAlert) {
-        setShowPicAlert(true);
-        setHasShownAlert(true);
-      }
-    } catch (err: any) {
-      console.error("❌ fetchUserProfile error:", err.message);
-      Alert.alert("Error", "Failed to fetch profile. Please try again.");
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [hasShownAlert]);
-
-  useEffect(() => {
-    fetchUserProfile();
-  }, []);
-
   /** Pull-to-refresh */
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchUserProfile();
+    await refreshUser();
+    setRefreshing(false);
   };
 
-  /** Profile picture missing alert */
+  /** Show profile picture alert if missing */
+  useEffect(() => {
+    if (user && !user.profilePicture && !hasShownAlert) {
+      setShowPicAlert(true);
+      setHasShownAlert(true);
+    }
+  }, [user]);
+
   useEffect(() => {
     if (showPicAlert) {
-      Alert.alert("Profile Picture Missing", "Update your profile pic, it's missing!", [
-        { text: "OK" },
-        { text: "Edit Profile", onPress: handleEditProfile },
-      ]);
+      Alert.alert(
+        "Profile Picture Missing",
+        "Update your profile pic, it's missing!",
+        [
+          { text: "OK" },
+          { text: "Edit Profile", onPress: handleEditProfile },
+        ]
+      );
       setShowPicAlert(false);
     }
   }, [showPicAlert]);
 
-  /** Edit profile */
+  /** Edit profile placeholder */
   const handleEditProfile = () => {
-    Alert.alert("Coming Soon 🚧", "Profile editing is under progress.\nPlease go back for now.", [
-      { text: "OK" },
-    ]);
+    Alert.alert(
+      "Coming Soon 🚧",
+      "Profile editing is under progress.\nPlease go back for now.",
+      [{ text: "OK" }]
+    );
   };
 
   /** Logout */
   const handleLogout = async () => {
-    try {
-      await clearAuthToken(); // implement your logout logic
-      router.replace("/(auth)/login");
-    } catch (err) {
-      console.error("❌ Logout failed:", err);
-    }
+    await logout();
+    router.replace("/(auth)/login");
   };
 
   /** Loading screen */
@@ -131,7 +93,6 @@ export default function ProfileSetupScreen() {
     );
   }
 
-  /** Main UI */
   return (
     <SafeAreaView style={tw.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#EEF2FF" />
@@ -154,14 +115,14 @@ export default function ProfileSetupScreen() {
         <View style={tw.profileSection}>
           <View style={tw.profileImageContainer}>
             <Image
-              source={avatarUrl ? { uri: avatarUrl } : PlaceholderProfile}
+              source={user?.profilePicture ? { uri: user.profilePicture } : PlaceholderProfile}
               style={tw.profileImage}
               resizeMode="cover"
             />
           </View>
-          <Text style={tw.nameText}>{userData?.name || "User"}</Text>
+          <Text style={tw.nameText}>{user?.name || "User"}</Text>
           <View style={tw.emailContainer}>
-            <Text style={tw.emailText}>{userData?.email || "example@gmail.com"}</Text>
+            <Text style={tw.emailText}>{user?.email || "example@gmail.com"}</Text>
             <TouchableOpacity style={tw.editButton} onPress={handleEditProfile}>
               <Edit2 size={16} color="#3B82F6" strokeWidth={2} />
             </TouchableOpacity>
@@ -171,9 +132,9 @@ export default function ProfileSetupScreen() {
         {/* Stats Section */}
         <View style={tw.statsContainer}>
           {[
-            { icon: ProgramsVisitedIcon, value: userData?.programsVisited || 0, label: "Programs Visited" },
-            { icon: WishlistIcon, value: userData?.wishlistCount || 0, label: "Wishlist" },
-            { icon: RequestsRaisedIcon, value: userData?.requestsRaised || 0, label: "Requests Raised" },
+            { icon: ProgramsVisitedIcon, value: user?.programsVisited || 0, label: "Programs Visited" },
+            { icon: WishlistIcon, value: user?.wishlistCount || 0, label: "Wishlist" },
+            { icon: RequestsRaisedIcon, value: user?.requestsRaised || 0, label: "Requests Raised" },
           ].map((item, idx) => (
             <View style={tw.statItem} key={idx}>
               <View style={tw.statIconBox}>
@@ -248,14 +209,3 @@ const tw = StyleSheet.create({
   menuIconContainer: { width: 24, height: 24, justifyContent: "center", alignItems: "center" },
   menuText: { fontSize: 16, color: "#374151", fontWeight: "500" },
 });
-
-/** Placeholder functions for auth token handling - implement in your app */
-async function getAuthToken(): Promise<string | null> {
-  // TODO: replace with your secure storage / token retrieval
-  return "REPLACE_WITH_REAL_TOKEN";
-}
-
-async function clearAuthToken() {
-  // TODO: clear token from storage
-  console.log("Auth token cleared");
-}
