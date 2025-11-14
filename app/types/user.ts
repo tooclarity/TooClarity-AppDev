@@ -1,9 +1,9 @@
-// app/types/user.ts
 export interface User {
   id: string;
   name: string;
   email: string;
   phone?: string;
+  contactNumber?: string;
   designation?: string;
   linkedin?: string;
   verified: boolean;
@@ -12,8 +12,13 @@ export interface User {
   isProfileCompleted?: boolean;
   role: 'student' | 'admin' | 'institution';
   googleId?: string;
-  contactNumber?: string;
   address?: string;
   birthday?: string;
   profilePicture?: string;
+  gender?: 'male' | 'female' | 'other'; // optional
+  nationality?: string;                // optional
+  createdAt?: string;                  // account creation date
+  updatedAt?: string;                  // last update
+  lastLogin?: string;                  // optional last login timestamp
+  [key: string]: any;                  // dynamic extra fields
 }

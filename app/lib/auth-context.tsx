@@ -1,15 +1,15 @@
-// lib/auth-context.tsx (updated provider)
+// types/authContext.ts
 import React, { createContext, useContext, useEffect } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { useAuthStore } from '../types/authStore';
 import { User } from '../types/user';
-import { API_BASE_URL } from '../../utils/constant';
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   initialized: boolean;
   isAuthenticated: boolean;
+
   login: (email: string, password: string, type?: 'admin' | 'institution' | 'student') => Promise<boolean>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -20,69 +20,26 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const { user, loading, initialized, isAuthenticated, updateUser, setPaymentStatus, setProfileCompleted, refreshUser: storeRefresh } = useAuthStore();
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+  const {
+    user,
+    loading,
+    initialized,
+    isAuthenticated,
+    login,
+    logout,
+    refreshUser: storeRefresh,
+    updateUser,
+    setPaymentStatus,
+    setProfileCompleted,
+  } = useAuthStore();
 
-  // Login function with consistent fetch and credentials
-  const login = async (
-    email: string,
-    password: string,
-    type: 'admin' | 'institution' | 'student' = 'student'
-  ): Promise<boolean> => {
-    console.log('[Login] Attempting login with:', email);
-
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/v1/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, type }),
-        credentials: 'include', // send cookies
-      });
-
-      const text = await res.text();
-      console.log('[Login] Raw response:', text);
-
-      let data;
-      try {
-        data = JSON.parse(text);
-      } catch {
-        console.warn('[Login] Response is not JSON');
-        return false;
-      }
-
-      if (res.status === 200 && data.status === 'success') {
-        console.log('[Login] Login successful, refreshing user...');
-        await storeRefresh(); // fetch user info from /profile
-        return true;
-      }
-
-      console.log('[Login] Login failed:', data.message || 'Unknown error');
-      return false;
-    } catch (err) {
-      console.error('[Login] Network or unexpected error:', err);
-      return false;
-    }
-  };
-
-  const logout = async () => {
-    console.log('[Logout] Logging out...');
-    // Call backend logout if needed
-    try {
-      await fetch(`${API_BASE_URL}/api/v1/auth/logout`, { credentials: 'include' });
-    } catch (e) {
-      console.error('Logout API error:', e);
-    }
-    updateUser({} as User);
-  };
-
-  const refreshUser = async () => {
-    storeRefresh();
-  };
-
+  // Refresh user on mount
   useEffect(() => {
-    refreshUser();
-  }, []);
+    storeRefresh();
+  }, [storeRefresh]);
 
+  // Show loader until store is initialized
   if (!initialized) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
@@ -100,7 +57,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isAuthenticated,
         login,
         logout,
-        refreshUser,
+        refreshUser: storeRefresh,
         updateUser,
         setPaymentStatus,
         setProfileCompleted,
@@ -109,10 +66,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       {children}
     </AuthContext.Provider>
   );
-}
+};
 
-export function useAuth() {
+/** Hook to access auth context safely */
+export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
-  if (!context) throw new Error('useAuth must be used inside AuthProvider');
+  if (!context) throw new Error('useAuth must be used inside an AuthProvider');
   return context;
-}
+};

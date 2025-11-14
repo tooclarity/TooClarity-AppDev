@@ -1,4 +1,4 @@
-// app/types/authStore.ts
+// types/authStore.ts
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -14,7 +14,11 @@ interface AuthState {
   initialized: boolean;
   token: string | null;
 
-  login: (email: string, password: string, type?: 'admin' | 'institution' | 'student') => Promise<boolean>;
+  login: (
+    email: string,
+    password: string,
+    type?: 'admin' | 'institution' | 'student'
+  ) => Promise<boolean>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
   updateUser: (updates: Partial<User>) => void;
@@ -31,6 +35,7 @@ export const useAuthStore = create<AuthState>()(
       initialized: false,
       token: null,
 
+      /** Login user with email/password */
       login: async (email, password, type = 'student') => {
         set({ loading: true });
         try {
@@ -38,24 +43,19 @@ export const useAuthStore = create<AuthState>()(
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email, password, type }),
-            credentials: 'include', // Use cookies instead of token
+            credentials: 'include',
           });
 
-          if (!res.ok) {
-            const text = await res.text();
-            Alert.alert('Login failed', text || 'Invalid credentials');
-            set({ loading: false });
-            return false;
-          }
-
           const json = await res.json();
-          // Assume backend sets cookie on success, no token returned
-          if (!json.status || json.status !== 'success') {
-            Alert.alert('Login failed', json.message || 'Invalid server response');
+
+          if (!res.ok || json.status !== 'success') {
+            Alert.alert('Login failed', json.message || 'Invalid credentials');
             set({ loading: false });
             return false;
           }
 
+          set({ token: json.token || null });
+          await get().refreshUser();
           set({ loading: false });
           return true;
         } catch (err) {
@@ -66,24 +66,23 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
+      /** Logout user */
       logout: async () => {
         try {
           await fetch(`${API_BASE_URL}/api/v1/auth/logout`, { credentials: 'include' });
-        } catch (e) {
-          console.error('Logout error:', e);
+        } catch (err) {
+          console.error('Logout error:', err);
         } finally {
           set({ user: null, token: null, isAuthenticated: false });
           router.replace('/(auth)/login');
         }
       },
 
+      /** Fetch the current logged-in user */
       refreshUser: async () => {
         set({ loading: true });
         try {
-          const res = await fetch(`${API_BASE_URL}/api/v1/profile`, {
-            credentials: 'include', // Use cookies
-          });
-
+          const res = await fetch(`${API_BASE_URL}/api/v1/profile`, { credentials: 'include' });
           if (!res.ok) throw new Error('Session invalid');
 
           const json = await res.json();
@@ -93,7 +92,8 @@ export const useAuthStore = create<AuthState>()(
             id: data.id || data._id || '',
             name: data.name || '',
             email: data.email || '',
-            phone: data.contactNumber || data.phone || '',
+            phone: data.phone || data.contactNumber || '',
+            contactNumber: data.contactNumber || data.phone || '',
             designation: data.designation || '',
             linkedin: data.linkedin || '',
             verified: data.verified ?? true,
@@ -102,10 +102,15 @@ export const useAuthStore = create<AuthState>()(
             isProfileCompleted: data.isProfileCompleted ?? false,
             role: data.role || 'student',
             googleId: data.googleId,
-            contactNumber: data.contactNumber,
             address: data.address,
             birthday: data.birthday,
             profilePicture: data.profilePicture,
+            gender: data.gender,
+            nationality: data.nationality,
+            createdAt: data.createdAt,
+            updatedAt: data.updatedAt,
+            lastLogin: data.lastLogin,
+            ...data, // keep any extra fields from backend
           };
 
           set({ user, isAuthenticated: !!user.id, loading: false, initialized: true });
@@ -115,19 +120,20 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
-      updateUser: (updates) => {
+      /** Update user object partially */
+      updateUser: (updates: Partial<User>) => {
         const { user } = get();
         if (user) set({ user: { ...user, ...updates } });
       },
 
-      setPaymentStatus: (isPaymentDone) => {
-        const { user } = get();
-        if (user) get().updateUser({ isPaymentDone });
+      /** Update payment status */
+      setPaymentStatus: (isPaymentDone: boolean) => {
+        get().updateUser({ isPaymentDone });
       },
 
-      setProfileCompleted: (isProfileCompleted) => {
-        const { user } = get();
-        if (user) get().updateUser({ isProfileCompleted });
+      /** Mark profile as completed */
+      setProfileCompleted: (isProfileCompleted: boolean) => {
+        get().updateUser({ isProfileCompleted });
       },
     }),
     {
