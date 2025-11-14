@@ -1,17 +1,18 @@
+// types/authContext.ts
 import React, { createContext, useContext, useEffect } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { View, ActivityIndicator } from 'react-native';
 import { useAuthStore } from '../types/authStore';
-import type { User } from '../types/user';
-import { router } from 'expo-router';
+import { User } from '../types/user';
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   initialized: boolean;
-  login: (email: string, password: string, type?: 'admin' | 'institution' | 'student') => Promise<boolean>;
-  logout: () => void;
-  refreshUser: () => Promise<void>;
   isAuthenticated: boolean;
+
+  login: (email: string, password: string, type?: 'admin' | 'institution' | 'student') => Promise<boolean>;
+  logout: () => Promise<void>;
+  refreshUser: () => Promise<void>;
   updateUser: (updates: Partial<User>) => void;
   setPaymentStatus: (isPaymentDone: boolean) => void;
   setProfileCompleted: (isProfileCompleted: boolean) => void;
@@ -19,7 +20,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const {
     user,
     loading,
@@ -27,58 +28,49 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isAuthenticated,
     login,
     logout,
-    refreshUser,
+    refreshUser: storeRefresh,
     updateUser,
     setPaymentStatus,
     setProfileCompleted,
   } = useAuthStore();
 
+  // Refresh user on mount
   useEffect(() => {
-    refreshUser().catch((error) => console.error('Failed to refresh user on startup:', error));
-  }, [refreshUser]);
+    storeRefresh();
+  }, [storeRefresh]);
 
-  const value: AuthContextType = {
-    user,
-    loading,
-    initialized,
-    login,
-    logout,
-    refreshUser,
-    isAuthenticated,
-    updateUser,
-    setPaymentStatus,
-    setProfileCompleted,
-  };
+  // Show loader until store is initialized
+  if (!initialized) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#0A46E4" />
+      </View>
+    );
+  }
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        initialized,
+        isAuthenticated,
+        login,
+        logout,
+        refreshUser: storeRefresh,
+        updateUser,
+        setPaymentStatus,
+        setProfileCompleted,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
+};
 
-export function useAuth() {
+/** Hook to access auth context safely */
+export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
-  if (!context) throw new Error('useAuth must be used within an AuthProvider');
+  if (!context) throw new Error('useAuth must be used inside an AuthProvider');
   return context;
-}
-
-// HOC for protected screens
-export function withAuth<P extends object>(Component: React.ComponentType<P>) {
-  return function AuthenticatedComponent(props: P) {
-    const { isAuthenticated, loading } = useAuth();
-
-    if (loading) {
-      return (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color="#2563eb" />
-        </View>
-      );
-    }
-
-    if (!isAuthenticated) {
-      router.replace('/(auth)/login');
-      return null;
-    }
-
-    return <Component {...props} />;
-  };
-}
-
-export default AuthProvider;
+};
