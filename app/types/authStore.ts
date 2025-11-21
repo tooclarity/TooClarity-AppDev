@@ -34,9 +34,12 @@ export const useAuthStore = create<AuthState>()(
       login: async (email, password, type = 'student') => {
         set({ loading: true });
         try {
+            const storedCookie = await AsyncStorage.getItem('authCookie') || '';
           const res = await fetch(`${API_BASE_URL}/api/v1/auth/login`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+            ...(storedCookie && { 'Cookie': storedCookie})},
             body: JSON.stringify({ email, password, type }),
             credentials: 'include', // Use cookies instead of token
           });
@@ -68,7 +71,14 @@ export const useAuthStore = create<AuthState>()(
 
       logout: async () => {
         try {
-          await fetch(`${API_BASE_URL}/api/v1/auth/logout`, { credentials: 'include' });
+            const storedCookie = await AsyncStorage.getItem('authCookie') || '';
+          await fetch(`${API_BASE_URL}/api/v1/auth/logout`, {
+              credentials: 'include',
+              headers: {
+                  ...(storedCookie && { 'Cookie': storedCookie }),
+              },
+          });
+            await AsyncStorage.removeItem('authCookie');
         } catch (e) {
           console.error('Logout error:', e);
         } finally {
@@ -80,8 +90,14 @@ export const useAuthStore = create<AuthState>()(
       refreshUser: async () => {
         set({ loading: true });
         try {
+            const storedCookie = await AsyncStorage.getItem('authCookie') || '';
           const res = await fetch(`${API_BASE_URL}/api/v1/profile`, {
             credentials: 'include', // Use cookies
+              headers: {
+                  ...(storedCookie && { 'Cookie': storedCookie }),
+                  'Cache-Control': 'no-cache',
+                  'Pragma': 'no-cache',
+              },
           });
 
           if (!res.ok) throw new Error('Session invalid');

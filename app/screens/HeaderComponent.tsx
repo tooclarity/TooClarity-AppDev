@@ -48,7 +48,7 @@ const Header: React.FC<HeaderProps> = ({ user, profilePic, getInitials, selected
   return (
     <View className="flex-row items-center justify-between mb-4">
       <View className="flex-row items-center flex-1">
-        <TouchableOpacity onPress={() => router.push('/screens/profilesetup')} className="mr-3">
+        <TouchableOpacity onPress={() => router.push('/(auth)/profilesetup')} className="mr-3">
           {profilePic || user?.profilePicture ? (
             <Image
               source={{ uri: profilePic || user?.profilePicture }}

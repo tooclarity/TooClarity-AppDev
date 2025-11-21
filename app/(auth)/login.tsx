@@ -20,8 +20,7 @@ import * as Google from 'expo-auth-session/providers/google';
 import TooClarityLogo from '../../assets/images/Tooclaritylogo.png';
 import GoogleLogo from '../../assets/images/google-logo.png';
 import { useAuth } from '../lib/auth-context';
-
-const API_BASE_URL = 'http://192.168.19.101:3001'; // Updated to local URL for development to match server logs
+import {API_BASE_URL} from "@/utils/constant";
 
 const { width } = Dimensions.get('window');
 
@@ -46,7 +45,7 @@ export default function StudentLogin() {
   const router = useRouter();
 
   // from AuthContext
-  const { refreshUser, user } = useAuth();
+  const { refreshUser, user, updateUser } = useAuth();
 
   // Google Auth setup
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
@@ -84,7 +83,7 @@ export default function StudentLogin() {
       return;
     }
     if (!tempUser.isProfileCompleted) {
-      router.replace('/screens/profilesetup');
+      router.replace('/(auth)/profilesetup');
     } else {
       router.replace('/(tabs)/home');
     }
@@ -102,6 +101,7 @@ export default function StudentLogin() {
 
     console.log('[Login] Attempting login with:', formData.contactNumber);
 
+
     const loginData = {
       contactNumber: formData.contactNumber,
       password: formData.password,
@@ -113,7 +113,7 @@ export default function StudentLogin() {
     try {
       const res = await fetch(`${API_BASE_URL}/api/v1/auth/login`, {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(loginData),
@@ -173,16 +173,20 @@ export default function StudentLogin() {
 
       // Fixed extraction: profile response has { data: { id, isProfileCompleted, ... }, ... }
       const tempUser = profileData.data || profileData.user || profileData;
+        if (tempUser && tempUser._id && !tempUser.id) {
+            tempUser.id = tempUser._id;
+        }
       if (!tempUser || !tempUser.id) {
         setError('Invalid user data received.');
         return;
       }
 
       console.log('[Login] Login successful, user ID:', tempUser.id);
+        updateUser(tempUser);
 
-      // TODO: Update auth store (authStore.ts) to read 'authCookie' from AsyncStorage and add 'Cookie' header to all authenticated fetches
+        // TODO: Update auth store (authStore.ts) to read 'authCookie' from AsyncStorage and add 'Cookie' header to all authenticated fetches
       // For now, skip refreshUser to avoid "Session invalid" error; manually navigate using tempUser
-      // await refreshUser(); // Commented out to prevent error until store is fixed
+      await refreshUser(); // Commented out to prevent error until store is fixed
 
       navigateAfterLogin(tempUser);
     } catch (err) {
@@ -258,6 +262,9 @@ export default function StudentLogin() {
 
       // Fixed extraction: profile response has { data: { id, isProfileCompleted, ... }, ... }
       const tempUser = profileData.data || profileData.user || profileData;
+        if (tempUser && tempUser._id && !tempUser.id) {
+            tempUser.id = tempUser._id;
+        }
       if (!tempUser || !tempUser.id) {
         Alert.alert('Error', 'Invalid user data received.');
         return;
@@ -337,7 +344,7 @@ export default function StudentLogin() {
         </TouchableOpacity>
 
         <View style={styles.signupSection}>
-          <Text style={styles.signupText}>Don't have an account? </Text>
+          <Text style={styles.signupText}>Don&#39;t have an account? </Text>
           <TouchableOpacity onPress={() => router.push('/signup')}>
             <Text style={styles.signupLink}>Sign up</Text>
           </TouchableOpacity>

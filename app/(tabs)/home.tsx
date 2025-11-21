@@ -680,7 +680,7 @@ export default function HomeScreen() {
     if (showPicAlert) {
       Alert.alert('Profile Picture Missing', "Update your profile pic, it's missing!", [
         { text: 'OK', style: 'default' },
-        { text: 'Edit Profile', onPress: () => router.push('/screens/profilesetup') },
+        { text: 'Edit Profile', onPress: () => router.push('/(auth)/profilesetup') },
       ]);
       setShowPicAlert(false);
     }

@@ -17,3 +17,5 @@ export interface User {
   birthday?: string;
   profilePicture?: string;
 }
+
+export default User;

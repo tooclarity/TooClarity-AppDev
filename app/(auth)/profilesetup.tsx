@@ -24,49 +24,48 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAuth } from '../lib/auth-context';
+import {API_BASE_URL} from "@/utils/constant";
 
 // ============================================
 // SECTION: API AND CONFIGURATION
-// ============================================
-
-// Updated API_BASE_URL
-const API_BASE_URL = "https://tooclarity.onrender.com/api";
+// ==========================================
 
 // ============================================
 // SECTION: CUSTOM HOOKS
 // ============================================
 
 // Simulated useAuth (replace with actual)
-const useAuth = () => {
-  const [user, setUser] = useState<any>(null);
-  const updateUser = (updates: any) => setUser((prev: any) => ({ ...prev, ...updates }));
-  const setProfileCompleted = (completed: boolean) => updateUser({ isProfileCompleted: completed });
-  const refreshUser = async () => {
-    try {
-      const storedCookie = await AsyncStorage.getItem('authCookie') || '';
-      const res = await fetch(`${API_BASE_URL}/v1/profile`, { 
-        credentials: 'include',
-        headers: {
-          ...(storedCookie && { 'Cookie': storedCookie }),
-        },
-      });
-      const text = await res.text();
-      let data;
-      try {
-        data = text ? JSON.parse(text) : {};
-      } catch {
-        data = { message: text };
-      }
-      if (!res.ok) {
-        throw new Error(data?.message || 'Failed to refresh user');
-      }
-      setUser(data.data || data);
-    } catch (e) {
-      console.error('Refresh user error:', e);
-    }
-  };
-  return { user, updateUser, setProfileCompleted, refreshUser };
-};
+// const useAuth = () => {
+//   const [user, setUser] = useState<any>(null);
+//   const updateUser = (updates: any) => setUser((prev: any) => ({ ...prev, ...updates }));
+//   const setProfileCompleted = (completed: boolean) => updateUser({ isProfileCompleted: completed });
+//   const refreshUser = async () => {
+//     try {
+//       const storedCookie = await AsyncStorage.getItem('authCookie') || '';
+//       const res = await fetch(`${API_BASE_URL}/api/v1/profile`, {
+//         credentials: 'include',
+//         headers: {
+//           ...(storedCookie && { 'Cookie': storedCookie }),
+//         },
+//       });
+//       const text = await res.text();
+//       let data;
+//       try {
+//         data = text ? JSON.parse(text) : {};
+//       } catch {
+//         data = { message: text };
+//       }
+//       if (!res.ok) {
+//         throw new Error(data?.message || 'Failed to refresh user');
+//       }
+//       setUser(data.data || data);
+//     } catch (e) {
+//       console.error('Refresh user error:', e);
+//     }
+//   };
+//   return { user, updateUser, setProfileCompleted, refreshUser };
+// };
 
 // ============================================
 // SECTION: ASSETS
@@ -170,7 +169,7 @@ interface UploadResult { success: boolean; fileUrl?: string; error?: string; }
 
 async function getPresignedUrl(filename: string, filetype: string): Promise<string> {
   const storedCookie = await getStoredCookie();
-  const res = await fetch(`${API_BASE_URL}/s3/upload-url`, {
+  const res = await fetch(`${API_BASE_URL}/api/s3/upload-url`, {
     method: "POST",
     credentials: "include",
     headers: { 
@@ -220,7 +219,7 @@ async function uploadToS3(file: any): Promise<UploadResult> {
 async function getProfileFallback(user: any): Promise<any> {
   try {
     const storedCookie = await getStoredCookie();
-    const res = await fetch(`${API_BASE_URL}/v1/profile`, { 
+    const res = await fetch(`${API_BASE_URL}/api/v1/profile`, {
       credentials: 'include',
       headers: {
         ...(storedCookie && { 'Cookie': storedCookie }),
@@ -243,7 +242,8 @@ async function getProfileFallback(user: any): Promise<any> {
 
 async function updateStudent(id: string, payload: any): Promise<any> {
   const storedCookie = await getStoredCookie();
-  const res = await fetch(`${API_BASE_URL}/v1/students/${encodeURIComponent(id)}`, {
+    console.log('Updating student with payload:', payload);
+  const res = await fetch(`${API_BASE_URL}/api/v1/students/${encodeURIComponent(id)}`, {
     method: "PUT",
     credentials: 'include',
     headers: { 
@@ -265,7 +265,7 @@ async function updateStudent(id: string, payload: any): Promise<any> {
 
 async function updateAcademicProfile(id: string, payload: any): Promise<any> {
   const storedCookie = await getStoredCookie();
-  const res = await fetch(`${API_BASE_URL}/v1/students/${encodeURIComponent(id)}/academic-profile`, {
+  const res = await fetch(`${API_BASE_URL}/api/v1/students/${encodeURIComponent(id)}/academic-profile`, {
     method: "PUT",
     credentials: 'include',
     headers: { 
@@ -282,13 +282,114 @@ async function updateAcademicProfile(id: string, payload: any): Promise<any> {
     data = { message: text };
   }
   if (!res.ok) throw new Error(data?.message || 'Failed to update academic profile');
+  console.log(res);
   return data;
 }
 
 // ============================================
 // SECTION: MAIN COMPONENT - ProfileSetup
 // ============================================
+const ProgressBar = ({ progressPct }: { progressPct: number }) => (
+    <View className="w-full h-1 bg-[#E9ECF4] rounded-full overflow-hidden mb-4">
+        <View className="h-full bg-[#0A46E4]" style={{ width: `${progressPct}%` }} />
+    </View>
+);
 
+const Title = ({ step, showAllCountries }: { step: Step; showAllCountries: boolean }) => (
+    <Text className="text-lg font-semibold text-[#111827] mb-4">
+        {step === 5 ? "Academic Interests" : step === 6 ? "Your Academic Profile" : step === 7 ? (showAllCountries ? "Select country" : "Your Study Goals") : "Tell us about you"}
+    </Text>
+);
+
+const AvatarSection = ({ avatarUrl, fullName, onPickAvatar, placeholderAvatar }: any) => (
+    <View className="flex flex-col items-center gap-4 mt-6">
+        <View className="relative w-[120px] h-[120px] rounded-full bg-gray-200 overflow-hidden shadow-sm">
+            {avatarUrl ? (
+                <Image source={{ uri: avatarUrl }} className="w-full h-full object-cover" />
+            ) : (
+                (() => {
+                    const initials = (fullName || "").trim().split(" ").slice(0,2).map((w: string) => w[0]).filter(Boolean).join("");
+                    return initials ? (
+                        <View className="w-full h-full flex items-center justify-center" style={{ backgroundColor: "#4F46E5" }}>
+                            <Text className="text-3xl font-semibold text-white">{initials}</Text>
+                        </View>
+                    ) : (
+                        <Image source={placeholderAvatar} className="w-full h-full object-cover" />
+                    );
+                })()
+            )}
+            <TouchableOpacity onPress={onPickAvatar} className="absolute bottom-1 right-1 w-8 h-8 rounded-full bg-[#0A46E4] shadow items-center justify-center">
+                <Ionicons name="pencil" size={16} color="white" />
+            </TouchableOpacity>
+        </View>
+    </View>
+);
+
+const InputField = ({ label, value, onChange, placeholder, error, keyboardType = 'default', maxLength, multiline = false, rows = 3, submitting }: any) => (
+    <View className="mb-4">
+        <Text className="text-xs font-semibold text-[#111827] mb-1">{label}</Text>
+        <TextInput
+            className={`w-full px-4 rounded-xl border ${error ? 'border-red-400 bg-white' : 'border-[#E5E7EB] bg-white'} ${multiline ? 'h-20 py-3' : 'h-12'}`}
+            value={value}
+            onChangeText={onChange}
+            placeholder={placeholder}
+            keyboardType={keyboardType}
+            maxLength={maxLength}
+            multiline={multiline}
+            numberOfLines={rows}
+            editable={!submitting}
+        />
+        {error && <Text className="text-xs text-red-500 mt-1">{error}</Text>}
+    </View>
+);
+
+const Dropdown = ({ value, onChange, options, placeholder, error, submitting }: any) => {
+    const [open, setOpen] = useState(false);
+    return (
+        <View className="mb-4">
+            <TouchableOpacity onPress={() => setOpen(!open)} disabled={submitting} className={`h-12 px-4 rounded-xl border flex-row items-center justify-between ${error ? 'border-red-400' : 'border-[#E5E7EB]'} bg-white`}>
+                <Text className={`${value ? 'text-[#111827]' : 'text-[#9CA3AF]'} text-base`}>{value || placeholder}</Text>
+                <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={20} color="#111827" />
+            </TouchableOpacity>
+            {open && (
+                <View className="bg-white border border-[#E5E7EB] rounded-xl mt-1 max-h-60">
+                    {options.map((opt: string) => (
+                        <TouchableOpacity key={opt} onPress={() => { onChange(opt); setOpen(false); }} className="px-4 py-3 flex-row items-center">
+                            <View className={`w-5 h-5 rounded-full border-2 border-[#111827] mr-3 items-center justify-center ${value === opt ? 'border-[#0A46E4]' : ''}`}>
+                                {value === opt && <View className="w-2.5 h-2.5 bg-[#0A46E4] rounded-full" />}
+                            </View>
+                            <Text className="text-base text-[#111827]">{opt}</Text>
+                        </TouchableOpacity>
+                    ))}
+                </View>
+            )}
+            {error && <Text className="text-xs text-red-500 mt-1">{error}</Text>}
+        </View>
+    );
+};
+
+const RadioGroup = ({ label, value, onChange, options, horizontal = false, error }: any) => (
+    <View className="mb-4">
+        {label && <Text className="text-xs font-semibold text-[#111827] mb-3">{label}</Text>}
+        <View className={horizontal ? 'flex-row justify-between' : 'flex-col space-y-3'}>
+            {options.map((opt: string) => (
+                <TouchableOpacity key={opt} onPress={() => onChange(opt)} className={`flex-row items-center py-3 px-2 rounded-lg ${value === opt ? 'bg-[#0A46E4]/10 border border-[#0A46E4]' : 'border border-[#E5E7EB]'}`}>
+                    <View className="w-5 h-5 rounded-full border-2 border-[#111827] mr-3 items-center justify-center">
+                        {value === opt && <View className="w-2.5 h-2.5 bg-[#0A46E4] rounded-full" />}
+                    </View>
+                    <Text className="text-base text-[#111827]">{opt}</Text>
+                </TouchableOpacity>
+            ))}
+        </View>
+        {error && <Text className="text-xs text-red-500 mt-1">{error}</Text>}
+    </View>
+);
+
+const ChipButton = ({ opt, selected, onPress }: any) => (
+    <TouchableOpacity onPress={onPress} className={`px-4 h-10 rounded-lg border ${selected ? 'bg-[#0A46E4] text-white border-[#0A46E4]' : 'border-[#E5E7EB] text-[#111827]'}`}>
+        <Text className={`text-sm font-medium ${selected ? 'text-white' : ''}`}>{opt}</Text>
+    </TouchableOpacity>
+);
 // Component
 const ProfileSetup: React.FC = () => {
   const router = useRouter();
@@ -539,18 +640,31 @@ const ProfileSetup: React.FC = () => {
       if (!validatePersonal()) return;
       setSubmitting(true);
       try {
-        let currentUser = user;
+          console.log("user before getProfileFallback:", user);
+
+          let currentUser = user;
         try {
           const profileRes = await getProfileFallback(user);
-          currentUser = profileRes;
+            if (profileRes && profileRes._id && !profileRes.id) {
+                profileRes.id = profileRes._id;
+            }
+            if (profileRes && profileRes.id) {
+                currentUser = profileRes;
+            }
         } catch (e) {
           console.warn('Profile fetch failed in continue, using user', e);
         }
-        if (!currentUser.id) throw new Error("Unable to get user profile. Please try logging in again.");
+          if (!currentUser.id && user?.id) {
+              currentUser = user;
+          }
+
+          if (!currentUser || !currentUser.id) {
+              throw new Error("Unable to get user profile. Please try logging in again.");
+          }
 
         const payload = {
           name: fullName.trim(),
-          email: user?.email || "",
+          email: user?.email || undefined,
           contactNumber: user?.phone && /^\d{10}$/.test(user.phone) ? user.phone : undefined,
           address: location.trim(),
           birthday: birthday || undefined,
@@ -775,104 +889,6 @@ const ProfileSetup: React.FC = () => {
   // SUBSECTION: UI SUB-COMPONENTS
   // ============================================
 
-  // UI Components
-  const ProgressBar = () => (
-    <View className="w-full h-1 bg-[#E9ECF4] rounded-full overflow-hidden mb-4">
-      <View className="h-full bg-[#0A46E4]" style={{ width: `${progressPct}%` }} />
-    </View>
-  );
-
-  const Title = () => (
-    <Text className="text-lg font-semibold text-[#111827] mb-4">
-      {step === 5 ? "Academic Interests" : step === 6 ? "Your Academic Profile" : step === 7 ? (showAllCountries ? "Select country" : "Your Study Goals") : "Tell us about you"}
-    </Text>
-  );
-
-  const AvatarSection = () => (
-    <View className="flex flex-col items-center gap-4 mt-6">
-      <View className="relative w-[120px] h-[120px] rounded-full bg-gray-200 overflow-hidden shadow-sm">
-        {avatarUrl ? (
-          <Image source={{ uri: avatarUrl }} className="w-full h-full object-cover" />
-        ) : (
-          <View className="w-full h-full flex items-center justify-center" style={{ backgroundColor: "#4F46E5" }}>
-            <Text className="text-3xl font-semibold text-white">
-              {(fullName || "").trim().split(" ").slice(0,2).map(w => w[0]).filter(Boolean).join("") || "?"}
-            </Text>
-          </View>
-        )}
-        <TouchableOpacity onPress={onPickAvatar} className="absolute bottom-1 right-1 w-8 h-8 rounded-full bg-[#0A46E4] shadow">
-          <Ionicons name="pencil" size={16} color="white" />
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
-
-  const InputField = ({ label, value, onChange, placeholder, error, keyboardType = 'default', maxLength, multiline = false, rows = 3 }: any) => (
-    <View className="mb-4">
-      <Text className="text-xs font-semibold text-[#111827] mb-1">{label}</Text>
-      <TextInput
-        className={`w-full px-4 rounded-xl border ${error ? 'border-red-400 bg-white' : 'border-[#E5E7EB] bg-white'} ${multiline ? 'h-20 py-3' : 'h-12'}`}
-        value={value}
-        onChangeText={onChange}
-        placeholder={placeholder}
-        keyboardType={keyboardType}
-        maxLength={maxLength}
-        multiline={multiline}
-        numberOfLines={rows}
-        editable={!submitting}
-      />
-      {error && <Text className="text-xs text-red-500 mt-1">{error}</Text>}
-    </View>
-  );
-
-  const Dropdown = ({ value, onChange, options, placeholder, error }: any) => {
-    const [open, setOpen] = useState(false);
-    return (
-      <View className="mb-4">
-        <TouchableOpacity onPress={() => setOpen(!open)} disabled={submitting} className={`h-12 px-4 rounded-xl border flex-row items-center justify-between ${error ? 'border-red-400' : 'border-[#E5E7EB]'} bg-white`}>
-          <Text className={`${value ? 'text-[#111827]' : 'text-[#9CA3AF]'} text-base`}>{value || placeholder}</Text>
-          <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={20} color="#111827" />
-        </TouchableOpacity>
-        {open && (
-          <View className="bg-white border border-[#E5E7EB] rounded-xl mt-1 max-h-60">
-            {options.map((opt: string) => (
-              <TouchableOpacity key={opt} onPress={() => { onChange(opt); setOpen(false); }} className="px-4 py-3 flex-row items-center">
-                <View className={`w-5 h-5 rounded-full border-2 border-[#111827] mr-3 items-center justify-center ${value === opt ? 'border-[#0A46E4]' : ''}`}>
-                  {value === opt && <View className="w-2.5 h-2.5 bg-[#0A46E4] rounded-full" />}
-                </View>
-                <Text className="text-base text-[#111827]">{opt}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
-        {error && <Text className="text-xs text-red-500 mt-1">{error}</Text>}
-      </View>
-    );
-  };
-
-  const RadioGroup = ({ label, value, onChange, options, horizontal = false, error }: any) => (
-    <View className="mb-4">
-      {label && <Text className="text-xs font-semibold text-[#111827] mb-3">{label}</Text>}
-      <View className={horizontal ? 'flex-row justify-between' : 'flex-col space-y-3'}>
-        {options.map((opt: string) => (
-          <TouchableOpacity key={opt} onPress={() => onChange(opt)} className={`flex-row items-center py-3 px-2 rounded-lg ${value === opt ? 'bg-[#0A46E4]/10 border border-[#0A46E4]' : 'border border-[#E5E7EB]'}`}>
-            <View className="w-5 h-5 rounded-full border-2 border-[#111827] mr-3 items-center justify-center">
-              {value === opt && <View className="w-2.5 h-2.5 bg-[#0A46E4] rounded-full" />}
-            </View>
-            <Text className="text-base text-[#111827]">{opt}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-      {error && <Text className="text-xs text-red-500 mt-1">{error}</Text>}
-    </View>
-  );
-
-  const ChipButton = ({ opt, selected, onPress }: any) => (
-    <TouchableOpacity onPress={onPress} className={`px-4 h-10 rounded-lg border ${selected ? 'bg-[#0A46E4] text-white border-[#0A46E4]' : 'border-[#E5E7EB] text-[#111827]'}`}>
-      <Text className={`text-sm font-medium ${selected ? 'text-white' : ''}`}>{opt}</Text>
-    </TouchableOpacity>
-  );
-
   // ============================================
   // SUBSECTION: RENDER FUNCTIONS FOR STEPS
   // ============================================
@@ -880,7 +896,12 @@ const ProfileSetup: React.FC = () => {
   // Render functions
   const renderPersonalForm = () => (
     <>
-      {AvatarSection()}
+        <AvatarSection
+            avatarUrl={avatarUrl}
+            fullName={fullName}
+            onPickAvatar={onPickAvatar}
+            placeholderAvatar={placeholderAvatar}
+        />
       <InputField
         label="Full Name"
         value={fullName}
@@ -892,6 +913,7 @@ const ProfileSetup: React.FC = () => {
         placeholder="Enter full name"
         error={errors.fullName}
         maxLength={80}
+        submitting={submitting}
       />
       <InputField
         label="Birthday"
@@ -903,7 +925,7 @@ const ProfileSetup: React.FC = () => {
         }}
         placeholder="DD/MM/YYYY"
         error={errors.birthday}
-        keyboardType="numeric"
+        keyboardType="numbers-and-punctuation"
       />
       <InputField
         label="Location"
@@ -953,9 +975,9 @@ const ProfileSetup: React.FC = () => {
         return (
           <>
             <Text className="text-xs font-semibold text-[#111827] mb-1">Academic Status</Text>
-            <Dropdown value={studyingIn} onChange={setStudyingIn} options={["Completed Class 10th","Class 10th","Class 9th","Class 8th","Class 7th","Class 6th","Class 5th","Class 4th","Class 3rd","Class 2nd","Class 1st"]} placeholder="Select studying in" error={errors.studyingIn} />
+            <Dropdown value={studyingIn} onChange={setStudyingIn} options={["Completed Class 10th","Class 10th","Class 9th","Class 8th","Class 7th","Class 6th","Class 5th","Class 4th","Class 3rd","Class 2nd","Class 1st"]} placeholder="Select studying in" error={errors.studyingIn} submitting={submitting} />
             <Text className="text-xs font-semibold text-[#111827] mb-1 mt-4">Preferred Stream</Text>
-            <Dropdown value={preferredStream} onChange={setPreferredStream} options={["MPC (Engineering)","BiPC (Medical)","CEC (Commerce)","HEC (History)","Other's","Not Decided"]} placeholder="Select Your Preferred Stream" error={errors.preferredStream} />
+            <Dropdown value={preferredStream} onChange={setPreferredStream} options={["MPC (Engineering)","BiPC (Medical)","CEC (Commerce)","HEC (History)","Other's","Not Decided"]} placeholder="Select Your Preferred Stream" error={errors.preferredStream} submitting={submitting}/>
           </>
         );
 
@@ -964,9 +986,9 @@ const ProfileSetup: React.FC = () => {
         return (
           <>
             <Text className="text-xs font-semibold text-[#111827] mb-1">Academic Status</Text>
-            <Dropdown value={studyingIn} onChange={setStudyingIn} options={["Class 12th Passed","Class 12th","Class 11th"]} placeholder="Select studying in" error={errors.studyingIn} />
+            <Dropdown value={studyingIn} onChange={setStudyingIn} options={["Class 12th Passed","Class 12th","Class 11th"]} placeholder="Select studying in" error={errors.studyingIn} submitting={submitting}/>
             <Text className="text-xs font-semibold text-[#111827] mb-1 mt-4">Preferred Stream</Text>
-            <Dropdown value={preferredStream} onChange={setPreferredStream} options={["Engineering (B.E./B.Tech.)","Medical Sciences","Arts and Humanities (B.A.)","Science (B.Sc.)","Commerce (B.Com.)","Business Administration (BBA)","Computer Applications (BCA)","Fine Arts (BFA)","Law (L.L.B./Integrated Law Courses)","Other's"]} placeholder="Select Your Preferred Stream" error={errors.preferredStream} />
+            <Dropdown value={preferredStream} onChange={setPreferredStream} options={["Engineering (B.E./B.Tech.)","Medical Sciences","Arts and Humanities (B.A.)","Science (B.Sc.)","Commerce (B.Com.)","Business Administration (BBA)","Computer Applications (BCA)","Fine Arts (BFA)","Law (L.L.B./Integrated Law Courses)","Other's"]} placeholder="Select Your Preferred Stream" error={errors.preferredStream} submitting={submitting}/>
           </>
         );
 
@@ -974,21 +996,21 @@ const ProfileSetup: React.FC = () => {
       case "GRADUATION":
         return (
           <>
-            <Dropdown value={graduationType} onChange={setGraduationType} options={["Under Graduation", "Post Graduation"]} placeholder="Select graduation type" error={errors.graduationType} />
+            <Dropdown value={graduationType} onChange={setGraduationType} options={["Under Graduation", "Post Graduation"]} placeholder="Select graduation type" error={errors.graduationType} submitting={submitting}/>
             {graduationType === "Under Graduation" && (
               <>
                 <Text className="text-xs font-semibold text-[#111827] mb-1 mt-4">Academic Status</Text>
-                <Dropdown value={studyingIn} onChange={setStudyingIn} options={["Passed Out","1st Year","2nd Year","3rd Year","4th Year"]} placeholder="Select studying in" error={errors.studyingIn} />
+                <Dropdown value={studyingIn} onChange={setStudyingIn} options={["Passed Out","1st Year","2nd Year","3rd Year","4th Year"]} placeholder="Select studying in" error={errors.studyingIn} submitting={submitting}/>
                 <Text className="text-xs font-semibold text-[#111827] mb-1 mt-4">Preferred Stream</Text>
-                <Dropdown value={preferredStream} onChange={setPreferredStream} options={["B.Tech","B.Sc","B.A","B.Com","BBA","BCA","BFA","L.L.B","B.Pharmacy","Other's","Not Decided"]} placeholder="Select Your Preferred Stream" error={errors.preferredStream} />
+                <Dropdown value={preferredStream} onChange={setPreferredStream} options={["B.Tech","B.Sc","B.A","B.Com","BBA","BCA","BFA","L.L.B","B.Pharmacy","Other's","Not Decided"]} placeholder="Select Your Preferred Stream" error={errors.preferredStream} submitting={submitting}/>
               </>
             )}
             {graduationType === "Post Graduation" && (
               <>
                 <Text className="text-xs font-semibold text-[#111827] mb-1 mt-4">Academic Status</Text>
-                <Dropdown value={studyingIn} onChange={setStudyingIn} options={["PG Passed","1st Year","2nd Year"]} placeholder="Select studying in" error={errors.studyingIn} />
+                <Dropdown value={studyingIn} onChange={setStudyingIn} options={["PG Passed","1st Year","2nd Year"]} placeholder="Select studying in" error={errors.studyingIn} submitting={submitting}/>
                 <Text className="text-xs font-semibold text-[#111827] mb-1 mt-4">Preferred Stream</Text>
-                <Dropdown value={preferredStream} onChange={setPreferredStream} options={["MBA","MCA","M.SC","MS","M.TECH","M.COM","M.PHARMACY","L.L.M","Other's"]} placeholder="Select Your Preferred Stream" error={errors.preferredStream} />
+                <Dropdown value={preferredStream} onChange={setPreferredStream} options={["MBA","MCA","M.SC","MS","M.TECH","M.COM","M.PHARMACY","L.L.M","Other's"]} placeholder="Select Your Preferred Stream" error={errors.preferredStream} submitting={submitting}/>
               </>
             )}
           </>
@@ -1000,9 +1022,9 @@ const ProfileSetup: React.FC = () => {
           <>
             <RadioGroup label="What are you looking for?" value={lookingFor} onChange={setLookingFor} options={["Upskilling / Skill Development", "Exam Preparation", "Vocational Training"]} error={errors.lookingFor} />
             <Text className="text-xs font-semibold text-[#111827] mb-1 mt-4">What is your academic level?</Text>
-            <Dropdown value={academicLevel} onChange={setAcademicLevel} options={["Completed Class 10","Studying in Class 11","Studying in Class 12","Completed Class 12","Pursuing Under Graduation","Completed Under Graduation","Pursuing Post Graduation","Completed Post Graduation"]} placeholder="Select your academic status" error={errors.academicLevel} />
+            <Dropdown value={academicLevel} onChange={setAcademicLevel} options={["Completed Class 10","Studying in Class 11","Studying in Class 12","Completed Class 12","Pursuing Under Graduation","Completed Under Graduation","Pursuing Post Graduation","Completed Post Graduation"]} placeholder="Select your academic status" error={errors.academicLevel} submitting={submitting}/>
             <Text className="text-xs font-semibold text-[#111827] mb-1 mt-4">Stream</Text>
-            <Dropdown value={stream} onChange={setStream} options={coachingStreamOptions} placeholder="Select your stream" error={errors.stream} />
+            <Dropdown value={stream} onChange={setStream} options={coachingStreamOptions} placeholder="Select your stream" error={errors.stream} submitting={submitting}/>
             <InputField label="Passout Year" value={passoutYear} onChange={setPassoutYear} placeholder="Enter year" error={errors.passoutYear} keyboardType="numeric" maxLength={4} />
           </>
         );
@@ -1012,9 +1034,9 @@ const ProfileSetup: React.FC = () => {
         return (
           <>
             <Text className="text-xs font-semibold text-[#111827] mb-1">Academic Status</Text>
-            <Dropdown value={studyingIn} onChange={setStudyingIn} options={["6th Grade","7th Grade","8th Grade","9th Grade","10th Grade","11th Grade","12th Grade"]} placeholder="Select studying in" error={errors.studyingIn} />
+            <Dropdown value={studyingIn} onChange={setStudyingIn} options={["6th Grade","7th Grade","8th Grade","9th Grade","10th Grade","11th Grade","12th Grade"]} placeholder="Select studying in" error={errors.studyingIn} submitting={submitting}/>
             <Text className="text-xs font-semibold text-[#111827] mb-1 mt-4">Preferred Stream</Text>
-            <Dropdown value={preferredStream} onChange={setPreferredStream} options={["Math","Science","English","Social Studies"]} placeholder="Select Your Preferred Stream" error={errors.preferredStream} />
+            <Dropdown value={preferredStream} onChange={setPreferredStream} options={["Math","Science","English","Social Studies"]} placeholder="Select Your Preferred Stream" error={errors.preferredStream} submitting={submitting}/>
           </>
         );
 
@@ -1025,7 +1047,7 @@ const ProfileSetup: React.FC = () => {
             <RadioGroup label="Highest Level of Education" value={highestEducation} onChange={setHighestEducation} options={["12th Grade", "Bachelor's", "Master's"]} error={errors.highestEducation} />
             <RadioGroup label="Do you have any backlogs?" value={hasBacklogs} onChange={setHasBacklogs} options={["Yes", "No"]} horizontal error={errors.hasBacklogs} />
             <Text className="text-xs font-semibold text-[#111827] mb-1 mt-4">English Test Status</Text>
-            <Dropdown value={englishTestStatus} onChange={setEnglishTestStatus} options={["Haven't decided yet","Preparing for the exam","Booked my exam","Awaiting results","Already have my exam score"]} placeholder="Select Test Status" error={errors.englishTestStatus} />
+            <Dropdown value={englishTestStatus} onChange={setEnglishTestStatus} options={["Haven't decided yet","Preparing for the exam","Booked my exam","Awaiting results","Already have my exam score"]} placeholder="Select Test Status" error={errors.englishTestStatus} submitting={submitting}/>
             {englishTestStatus === "Already have my exam score" && (
               <>
                 <Text className="text-xs font-semibold text-[#111827] mb-1 mt-4">Test Type</Text>
@@ -1073,6 +1095,7 @@ const ProfileSetup: React.FC = () => {
         options={["Below ₹10 Lakhs", "₹10 Lakhs - ₹20 Lakhs", "₹20 Lakhs - ₹30 Lakhs","₹30 Lakhs - ₹40 Lakhs","₹40 Lakhs - ₹50 Lakhs","Above ₹50 Lakhs"]}
         placeholder="Select budget range"
         error={errors.budgetPerYear}
+        submitting={submitting}
       />
       <Text className="text-xs font-semibold text-[#111827] mb-1 mt-4">Preferred Countries</Text>
       <Text className="text-xs text-[#9CA3AF] mb-2">You can select up to 3 countries</Text>
@@ -1244,8 +1267,8 @@ const ProfileSetup: React.FC = () => {
           </TouchableOpacity>
         </View>
         <ScrollView className="flex-1 px-6 pt-6" showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-          <ProgressBar />
-          <Title />
+          <ProgressBar progressPct={progressPct}/>
+          <Title step={step} showAllCountries={showAllCountries}/>
           {step <= 4 && renderPersonalForm()}
           {step === 5 && renderInterests()}
           {step === 6 && renderAcademicForm()}
