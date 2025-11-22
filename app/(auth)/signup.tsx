@@ -578,7 +578,7 @@ function SignupScreen() {
       if (token) setToken(token);
       await refreshUser();
       Alert.alert("Success", "Account created successfully!", [
-        { text: "OK", onPress: () => router.replace("/(auth)/profilesetup") },
+        { text: "OK", onPress: () => router.replace("/(auth)/login") },
       ]);
     } catch (e: any) {
       setError(e.message);

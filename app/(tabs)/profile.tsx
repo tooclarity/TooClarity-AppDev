@@ -13,8 +13,8 @@ import {
   Alert,
   RefreshControl,
 } from "react-native";
-import { router } from "expo-router";
-import { useAuthStore } from "../types/authStore"; // updated auth store
+import { router, useFocusEffect } from "expo-router";
+import { useAuthStore } from "../types/authStore"; 
 import { API_BASE_URL } from "../../utils/constant";
 import {
   ChevronLeft,
@@ -28,23 +28,25 @@ import {
 } from "lucide-react-native";
 
 // 🖼️ Assets
+// Make sure these paths are correct in your project structure
 import PlaceholderProfile from "../../assets/images/placeholder-profile.png";
 import ProgramsVisitedIcon from "../../assets/images/programsvisitedicon.png";
 import WishlistIcon from "../../assets/images/wishlistcoloricon.png";
 import RequestsRaisedIcon from "../../assets/images/requestsraised.png";
 
 export default function ProfileSetupScreen() {
-  const { user, refreshUser, logout } = useAuthStore();
+  const { logout } = useAuthStore();
   const [loading, setLoading] = useState(true);
   const [userData, setUserData] = useState<any>(null);
   const [refreshing, setRefreshing] = useState(false);
+  
+  // Local state for avatar to ensure instant updates
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [showPicAlert, setShowPicAlert] = useState(false);
-  const [hasShownAlert, setHasShownAlert] = useState(false);
 
-  /** Fetch profile inline */
-  const fetchProfileInline = useCallback(async () => {
+  /** Fetch profile directly from API */
+  const fetchUserProfile = useCallback(async () => {
     try {
+      console.log("🔄 [ProfileScreen] Fetching latest user data...");
       const response = await fetch(`${API_BASE_URL}/api/v1/profile`, {
         method: "GET",
         credentials: "include",
@@ -54,75 +56,44 @@ export default function ProfileSetupScreen() {
       });
 
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      
       const res = await response.json();
-      const data = res?.data || res;
-      return {
-        id: data?.id || data?._id || "",
-        name: data?.name || "",
-        email: data?.email || "",
-        phoneNumber: data?.contactNumber || "",
-        profilePicture: data?.profilePicture || data?.ProfilePicutre || null,
-        birthday: data?.birthday || null,
-      };
-    } catch (err) {
-      console.error("❌ fetchProfileInline error:", err);
-      return null;
-    }
-  }, []);
+      // Handle backend variations { success: true, data: user } OR just user object
+      const data = res?.data?.user || res?.data || (res.success ? res : null);
 
-  /** Load user data */
-  const fetchUserData = useCallback(async () => {
-    setLoading(true);
-    try {
-      await refreshUser();
-      const profile = await fetchProfileInline();
-      if (!profile) return;
-
-      setUserData(profile);
-      if (profile.profilePicture) setAvatarUrl(profile.profilePicture);
-      else if (!hasShownAlert) {
-        setShowPicAlert(true);
-        setHasShownAlert(true);
+      if (data) {
+        console.log("✅ [ProfileScreen] User data loaded:", data.name);
+        setUserData(data);
+        
+        // Handle Case Sensitivity
+        const pic = data.profilePicture || data.ProfilePicture || null;
+        setAvatarUrl(pic);
       }
     } catch (err) {
-      console.error("❌ fetchUserData error:", err);
+      console.error("❌ [ProfileScreen] Fetch error:", err);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [fetchProfileInline, refreshUser, hasShownAlert]);
-
-  useEffect(() => {
-    fetchUserData();
   }, []);
+
+  // Re-fetch data every time screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      fetchUserProfile();
+    }, [fetchUserProfile])
+  );
 
   /** Pull-to-refresh */
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchUserData();
+    await fetchUserProfile();
   };
 
-  /** Missing profile picture alert */
-  useEffect(() => {
-    if (showPicAlert) {
-      Alert.alert("Profile Picture Missing", "Update your profile pic, it's missing!", [
-        { text: "OK", style: "default" },
-        {
-          text: "Edit Profile",
-          onPress: handleEditProfile,
-        },
-      ]);
-      setShowPicAlert(false);
-    }
-  }, [showPicAlert]);
-
-  /** Edit profile */
+  /** Edit profile navigation */
   const handleEditProfile = () => {
-    Alert.alert(
-      "Coming Soon 🚧",
-      "Profile editing is under progress.\nPlease go back for now.",
-      [{ text: "OK" }]
-    );
+    // Navigate to your edit profile or setup screen
+    router.push("/(auth)/profilesetup");
   };
 
   /** Logout */
@@ -135,10 +106,10 @@ export default function ProfileSetupScreen() {
     }
   };
 
-  /** Loading screen */
-  if (loading && !refreshing) {
+  /** Loading View */
+  if (loading && !userData) {
     return (
-      <SafeAreaView style={[tw.safeArea, { justifyContent: "center", alignItems: "center" }]}>
+      <SafeAreaView style={[styles.safeArea, { justifyContent: "center", alignItems: "center" }]}>
         <Text style={{ fontSize: 16, color: "#555" }}>Loading Profile...</Text>
       </SafeAreaView>
     );
@@ -146,86 +117,100 @@ export default function ProfileSetupScreen() {
 
   /** Main UI */
   return (
-    <SafeAreaView style={tw.safeArea}>
+    <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#EEF2FF" />
 
       {/* Header */}
-      <View style={tw.header}>
-        <TouchableOpacity onPress={() => router.back()} style={tw.backButton}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <ChevronLeft size={24} color="#1F2937" strokeWidth={2} />
         </TouchableOpacity>
-        <Text style={tw.headerTitle}>Profile</Text>
-        <View style={tw.headerSpacer} />
+        <Text style={styles.headerTitle}>Profile</Text>
+        <View style={styles.headerSpacer} />
       </View>
 
       {/* Scrollable content */}
       <ScrollView
-        contentContainerStyle={tw.scrollContainer}
+        contentContainerStyle={styles.scrollContainer}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         {/* Profile Section */}
-        <View style={tw.profileSection}>
-          <View style={tw.profileImageContainer}>
+        <View style={styles.profileSection}>
+          <View style={styles.profileImageContainer}>
             <Image
+              // Logic: Remote URL -> Placeholder Asset
               source={avatarUrl ? { uri: avatarUrl } : PlaceholderProfile}
-              style={tw.profileImage}
+              style={styles.profileImage}
               resizeMode="cover"
-              onError={() => console.warn("⚠️ Failed to load profile image")}
+              onError={(e) => {
+                  console.log("⚠️ Image Load Error:", e.nativeEvent.error);
+                  // If remote image fails, fallback could be handled here by unsetting avatarUrl
+                  // setAvatarUrl(null); 
+              }}
             />
           </View>
-          <Text style={tw.nameText}>{userData?.name || "User"}</Text>
-          <View style={tw.emailContainer}>
-            <Text style={tw.emailText}>{userData?.email || "example@gmail.com"}</Text>
-            <TouchableOpacity style={tw.editButton} onPress={handleEditProfile}>
+          
+          <Text style={styles.nameText}>{userData?.name || "User"}</Text>
+          
+          <View style={styles.emailContainer}>
+            <Text style={styles.emailText}>{userData?.email || "No email provided"}</Text>
+            <TouchableOpacity style={styles.editButton} onPress={handleEditProfile}>
               <Edit2 size={16} color="#3B82F6" strokeWidth={2} />
             </TouchableOpacity>
           </View>
         </View>
 
         {/* Stats Section */}
-        <View style={tw.statsContainer}>
+        <View style={styles.statsContainer}>
           {[
-            { icon: ProgramsVisitedIcon, value: 42, label: "Programs Visited" },
-            { icon: WishlistIcon, value: 5, label: "Wishlist" },
-            { icon: RequestsRaisedIcon, value: 7, label: "Requests Raised" },
+            { icon: ProgramsVisitedIcon, value: userData?.programsVisited || 0, label: "Programs Visited" },
+            { icon: WishlistIcon, value: userData?.wishlist?.length || 0, label: "Wishlist" },
+            { icon: RequestsRaisedIcon, value: userData?.requestsRaised || 0, label: "Requests Raised" },
           ].map((item, idx) => (
-            <View style={tw.statItem} key={idx}>
-              <View style={tw.statIconBox}>
-                <Image source={item.icon} style={tw.statIcon} resizeMode="contain" />
+            <View style={styles.statItem} key={idx}>
+              <View style={styles.statIconBox}>
+                <Image source={item.icon} style={styles.statIcon} resizeMode="contain" />
               </View>
-              <Text style={tw.statValue}>{item.value.toString().padStart(2, "0")}</Text>
-              <Text style={tw.statLabel}>{item.label}</Text>
+              <Text style={styles.statValue}>{item.value.toString().padStart(2, "0")}</Text>
+              <Text style={styles.statLabel}>{item.label}</Text>
             </View>
           ))}
         </View>
 
         {/* Menu Section */}
-        <View style={tw.menuContainer}>
+        <View style={styles.menuContainer}>
           {[
-            { icon: <User size={20} color="#6B7280" />, label: "Profile" },
-            { icon: <Bell size={20} color="#6B7280" />, label: "Notifications" },
-            { icon: <HelpCircle size={20} color="#6B7280" />, label: "Help Center" },
-            { icon: <Shield size={20} color="#6B7280" />, label: "Security & Privacy" },
+            { icon: <User size={20} color="#6B7280" />, label: "Profile", route: "/(auth)/profilesetup" },
+            { icon: <Bell size={20} color="#6B7280" />, label: "Notifications", route: "/screens/notifications" },
+            { icon: <HelpCircle size={20} color="#6B7280" />, label: "Help Center", route: "/help" },
+            { icon: <Shield size={20} color="#6B7280" />, label: "Security & Privacy", route: "/security" },
           ].map((item, idx) => (
-            <TouchableOpacity key={idx} style={tw.menuItem}>
-              <View style={tw.menuLeft}>
-                <View style={tw.menuIconContainer}>{item.icon}</View>
-                <Text style={tw.menuText}>{item.label}</Text>
+            <TouchableOpacity 
+                key={idx} 
+                style={styles.menuItem}
+                onPress={() => {
+                    if(item.route) router.push(item.route as any);
+                    else Alert.alert("Coming Soon", "This feature is under development.");
+                }}
+            >
+              <View style={styles.menuLeft}>
+                <View style={styles.menuIconContainer}>{item.icon}</View>
+                <Text style={styles.menuText}>{item.label}</Text>
               </View>
               <ChevronRight size={20} color="#9CA3AF" strokeWidth={2} />
             </TouchableOpacity>
           ))}
 
           {/* Logout */}
-          <TouchableOpacity style={tw.menuItem} onPress={handleLogout}>
-            <View style={tw.menuLeft}>
-              <View style={tw.menuIconContainer}>
-                <LogOut size={20} color="#6B7280" strokeWidth={2} />
+          <TouchableOpacity style={styles.menuItem} onPress={handleLogout}>
+            <View style={styles.menuLeft}>
+              <View style={styles.menuIconContainer}>
+                <LogOut size={20} color="#EF4444" strokeWidth={2} />
               </View>
-              <Text style={tw.menuText}>Logout</Text>
+              <Text style={[styles.menuText, { color: "#EF4444" }]}>Logout</Text>
             </View>
-            <ChevronRight size={20} color="#9CA3AF" strokeWidth={2} />
+            <ChevronRight size={20} color="#EF4444" strokeWidth={2} />
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -234,7 +219,7 @@ export default function ProfileSetupScreen() {
 }
 
 /** Styles */
-const tw = StyleSheet.create({
+const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: "#EEF2FF",
@@ -249,28 +234,28 @@ const tw = StyleSheet.create({
     backgroundColor: "#EEF2FF",
   },
   backButton: { width: 40, height: 40, justifyContent: "center", alignItems: "center" },
-  headerTitle: { fontSize: 18, fontWeight: "600", color: "#1F2937", fontFamily: "montserrat-semibold" },
+  headerTitle: { fontSize: 18, fontWeight: "600", color: "#1F2937", fontFamily: "Montserrat-SemiBold" },
   headerSpacer: { width: 40 },
 
   scrollContainer: { paddingHorizontal: 20, paddingBottom: 40 },
   profileSection: { alignItems: "center", marginTop: 20, marginBottom: 32 },
   profileImageContainer: { width: 120, height: 120, borderRadius: 60, overflow: "hidden", marginBottom: 16, backgroundColor: "#fff", borderWidth: 3, borderColor: "#fff" },
   profileImage: { width: "100%", height: "100%" },
-  nameText: { fontSize: 20, fontWeight: "600", color: "#111827", marginBottom: 8, fontFamily: "montserrat-semibold" },
+  nameText: { fontSize: 20, fontWeight: "600", color: "#111827", marginBottom: 8, fontFamily: "Montserrat-SemiBold" },
   emailContainer: { flexDirection: "row", alignItems: "center", gap: 8 },
-  emailText: { fontSize: 14, color: "#6B7280", fontFamily: "montserrat-regular" },
+  emailText: { fontSize: 14, color: "#6B7280", fontFamily: "Montserrat-Regular" },
   editButton: { padding: 4 },
 
   statsContainer: { flexDirection: "row", justifyContent: "space-between", marginBottom: 32, gap: 12 },
   statItem: { flex: 1, alignItems: "center", backgroundColor: "#fff", borderRadius: 12, paddingVertical: 16, paddingHorizontal: 8, shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 },
   statIconBox: { width: 48, height: 48, borderRadius: 8, backgroundColor: "#F3F4F6", justifyContent: "center", alignItems: "center", marginBottom: 8 },
   statIcon: { width: 28, height: 28 },
-  statValue: { fontSize: 20, fontWeight: "600", color: "#111827", marginBottom: 4, fontFamily: "montserrat-semibold" },
-  statLabel: { fontSize: 12, color: "#6B7280", textAlign: "center", fontFamily: "montserrat-regular" },
+  statValue: { fontSize: 20, fontWeight: "600", color: "#111827", marginBottom: 4, fontFamily: "Montserrat-SemiBold" },
+  statLabel: { fontSize: 12, color: "#6B7280", textAlign: "center", fontFamily: "Montserrat-Regular" },
 
   menuContainer: { gap: 12 },
   menuItem: { backgroundColor: "#fff", borderRadius: 12, paddingVertical: 16, paddingHorizontal: 16, flexDirection: "row", justifyContent: "space-between", alignItems: "center", shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 },
   menuLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
   menuIconContainer: { width: 24, height: 24, justifyContent: "center", alignItems: "center" },
-  menuText: { fontSize: 16, color: "#374151", fontWeight: "500", fontFamily: "montserrat-medium" },
+  menuText: { fontSize: 16, color: "#374151", fontWeight: "500", fontFamily: "Montserrat-Medium" },
 });
