@@ -1,241 +1,124 @@
-// File: app/components/SchoolDetailsComponent.tsx
 import React from 'react';
 import { View, Text, Image, TouchableOpacity, ScrollView, StatusBar } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 
-export type School = {
-  id: string;
-  name: string;
-  category: string;
-  curriculumType: string;
-  duration: string;
-  totalFees: string;
-  estDate: string;
-  mode: string;
-  timing: string;
-  location: string;
-  about: string;
-  operationalDays: string[];
-  additionalFeatures: { icon: string; label: string; value: string }[];
-  facilities: { icon: string; label: string; value: string }[];
-  image: string;
-  bannerImage: string;
-  bannerText: string;
-};
+export default function SchoolDetailsComponent() {
+  const router = useRouter();
+  const { courseData } = useLocalSearchParams();
+  
+  // Parse data passed from Home Screen
+  const course = typeof courseData === 'string' ? JSON.parse(courseData) : null;
 
-type Props = {
-  school: School;
-  onClose?: () => void;
-};
+  if (!course) {
+    return (
+      <View className="flex-1 justify-center items-center bg-white">
+        <Text>Course details not found.</Text>
+        <TouchableOpacity onPress={() => router.back()} className="mt-4"><Text className="text-blue-600">Go Back</Text></TouchableOpacity>
+      </View>
+    );
+  }
 
-export default function SchoolDetailsComponent({ school, onClose }: Props) {
-  const {
-    category,
-    name,
-    curriculumType,
-    duration,
-    totalFees,
-    estDate,
-    mode,
-    timing,
-    about,
-    operationalDays,
-    additionalFeatures,
-    facilities,
-    image,
-    bannerImage,
-    bannerText,
-  } = school;
-
-  const getCategorySpecificFeatures = (cat: string) => {
-    switch (cat) {
-      case 'UG/PG':
-        return [
-          { icon: 'briefcase', label: 'Placements', value: '361 x 261' },
-          { icon: 'id-card', label: 'Resume', value: 'Yes' },
-          { icon: 'logo-linkedin', label: 'Linkedin', value: 'Yes' },
-          { icon: 'mic', label: 'Mock Interviews', value: 'Yes' },
-        ];
-      case 'Coaching Centre':
-        return [
-          { icon: 'wifi', label: 'Access to executive jobs', value: 'Yes' },
-          { icon: 'briefcase', label: 'Placements', value: '361 x 261' },
-        ];
-      case 'Study Hall':
-        return [{ icon: 'lock-closed', label: 'Personal Lockers', value: 'Yes' }];
-      case 'Tuition Centre':
-        return [
-          { icon: 'id-card', label: 'Resume', value: 'Yes' },
-          { icon: 'logo-linkedin', label: 'Linkedin', value: 'Yes' },
-          { icon: 'mic', label: 'Mock', value: 'Yes' },
-        ];
-      case 'Study Abroad':
-        return [
-          { icon: 'briefcase', label: 'Placements', value: 'Yes' },
-          { icon: 'document', label: 'Application Assistance', value: 'Yes' },
-          { icon: 'airplane', label: 'Visa Processing', value: 'Yes' },
-          { icon: 'bed', label: 'Accommodation', value: 'Yes' },
-        ];
-      case 'Exam Preparation':
-        return [
-          { icon: 'book', label: 'Study Materials', value: 'Yes' },
-          { icon: 'people', label: 'Class Size', value: 'Yes' },
-          { icon: 'school', label: 'Study Room', value: 'Yes' },
-          { icon: 'checkmark-circle', label: 'Mock Tests', value: 'Yes' },
-        ];
-      default:
-        return additionalFeatures;
-    }
-  };
-
-  const categoryFeatures = getCategorySpecificFeatures(category);
+  const { title, institution, priceFormatted, mode, location, apiData } = course;
+  const description = apiData?.aboutCourse || "No description provided.";
+  const instituteLogo = apiData?.institution?.instituteLogo;
+  const estDate = apiData?.institution?.establishmentDate || "N/A";
+  
+  // Dynamic Features based on API Data
+  const renderFeature = (icon: any, label: string, value: string) => (
+    <View className="bg-gray-50 rounded-lg p-3 mr-2 min-w-[80px] items-center mb-2">
+      <Ionicons name={icon} size={20} color="#007AFF" className="mb-1" />
+      <Text className="font-regular text-[10px] text-center text-gray-600 mb-1">{label}</Text>
+      <Text className="font-semibold text-[12px] text-black text-center">{value || "Yes"}</Text>
+    </View>
+  );
 
   return (
-    <View className="flex-1 bg-[#EEF3FF] border-t border-gray-200"> {/* match Home screen bg */}
+    <View className="flex-1 bg-[#F5F5FF]">
       <StatusBar hidden />
       <ScrollView contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
-        {/* Close Button */}
-        {onClose && (
-          <TouchableOpacity onPress={onClose} className="absolute top-6 right-4 z-50 bg-white rounded-full p-2 shadow">
-            <Ionicons name="close" size={24} color="black" />
-          </TouchableOpacity>
-        )}
-
-        {/* Hero Image */}
+        
+        {/* Header Image */}
         <View className="relative">
-          <Image source={{ uri: image }} className="w-full h-[250px]" />
+          <Image source={{ uri: course.image }} className="w-full h-[250px] bg-gray-300" resizeMode="cover" />
+          
+          <TouchableOpacity onPress={() => router.back()} className="absolute top-6 left-4 z-50 bg-white/20 backdrop-blur-md rounded-full p-2">
+            <Ionicons name="arrow-back" size={24} color="white" />
+          </TouchableOpacity>
+
           <LinearGradient
-            colors={['transparent', 'rgba(0,0,0,0.7)']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 0, y: 1 }}
-            className="absolute bottom-0 left-0 right-0 h-[100px]"
+            colors={['transparent', 'rgba(0,0,0,0.8)']}
+            className="absolute bottom-0 left-0 right-0 h-[120px] justify-end px-4 py-4"
           >
-            <View className="px-4 py-3 flex-1 justify-end">
-              <View className="flex-row items-center mb-1">
-                <Image source={{ uri: 'https://via.placeholder.com/30x30/red/ffffff?text=B' }} className="w-6 h-6 rounded mr-2" />
-                <Text className="font-montserrat-semibold text-white text-[14px] flex-1">{name}</Text>
-                <Ionicons name="bookmark-outline" size={20} color="white" />
-              </View>
-              <Text className="font-montserrat-regular text-white text-[12px] mb-1">{about}</Text>
-              <View className="flex-row justify-between">
-                <Text className="font-montserrat-medium text-white text-[12px]">Total Fees {totalFees}</Text>
-                <Text className="font-montserrat-medium text-white text-[12px]">Duration: {duration}</Text>
-              </View>
+            <View className="flex-row items-center mb-2">
+              {instituteLogo && <Image source={{ uri: instituteLogo }} className="w-8 h-8 rounded-full mr-2 border border-white" />}
+              <Text className="font-bold text-white text-lg flex-1" numberOfLines={1}>{institution}</Text>
             </View>
+            <Text className="text-white/90 text-sm font-medium mb-1">{location}</Text>
           </LinearGradient>
         </View>
 
-        {/* School Info */}
-        <View className="px-4 pt-4">
-          {/* Category Badge */}
-          <View className="bg-blue-100 rounded-full px-3 py-1 mb-2">
-            <Text className="font-montserrat-medium text-blue-600 text-[12px]">{category}</Text>
-          </View>
-
-          {/* Name and Curriculum */}
-          <View className="flex-row items-center mb-3">
-            <Image source={{ uri: 'https://via.placeholder.com/30x30/red/ffffff?text=B' }} className="w-6 h-6 rounded mr-2" />
-            <Text className="font-montserrat-semibold text-black text-[18px] flex-1">{name}</Text>
-            <View className="bg-gray-100 rounded-full px-2 py-1">
-              <Text className="font-montserrat-medium text-[12px] text-gray-600">{curriculumType}</Text>
+        {/* Content */}
+        <View className="px-4 pt-5">
+          
+          {/* Title & Price */}
+          <View className="flex-row justify-between items-start mb-4">
+            <View className="flex-1 mr-2">
+                <View className="bg-blue-100 self-start px-2 py-1 rounded-md mb-2">
+                    <Text className="text-blue-700 text-[10px] font-bold uppercase">{course.instituteType}</Text>
+                </View>
+                <Text className="font-bold text-xl text-gray-900">{title}</Text>
+            </View>
+            <View className="items-end">
+                <Text className="font-bold text-lg text-[#0222D7]">{priceFormatted}</Text>
+                <Text className="text-gray-500 text-xs">Total Fees</Text>
             </View>
           </View>
 
-          {/* Duration & Fees */}
-          <View className="flex-row justify-between mb-3">
-            <View className="flex-row items-center">
-              <Ionicons name="time-outline" size={16} color="gray" className="mr-1" />
-              <Text className="font-montserrat-medium text-[14px] text-black">{duration}</Text>
-            </View>
-            <Text className="font-montserrat-semibold text-[16px] text-black">Total Fees {totalFees}</Text>
-          </View>
-
-          {/* Est & Timing */}
-          <View className="flex-row justify-between mb-3">
-            <Text className="font-montserrat-medium text-[14px] text-gray-600">{estDate}</Text>
-            <View className="flex-row items-center">
-              <Ionicons name="time-outline" size={16} color="gray" className="mr-1" />
-              <Text className="font-montserrat-medium text-[14px] text-black">{timing}</Text>
-            </View>
-          </View>
-
-          {/* Mode */}
-          <View className="flex-row items-center mb-4">
-            <Ionicons name="school-outline" size={16} color="gray" className="mr-2" />
-            <Text className="font-montserrat-medium text-[14px] text-black">{mode}</Text>
+          {/* Quick Info */}
+          <View className="flex-row justify-between mb-6 bg-white p-4 rounded-xl shadow-sm">
+             <View className="items-center flex-1 border-r border-gray-100">
+                <Ionicons name="time-outline" size={20} color="#666" />
+                <Text className="text-xs text-gray-500 mt-1">Duration</Text>
+                <Text className="font-bold text-sm">{apiData?.courseDuration || "N/A"}</Text>
+             </View>
+             <View className="items-center flex-1 border-r border-gray-100">
+                <Ionicons name="school-outline" size={20} color="#666" />
+                <Text className="text-xs text-gray-500 mt-1">Mode</Text>
+                <Text className="font-bold text-sm">{mode}</Text>
+             </View>
+             <View className="items-center flex-1">
+                <Ionicons name="calendar-outline" size={20} color="#666" />
+                <Text className="text-xs text-gray-500 mt-1">Est.</Text>
+                <Text className="font-bold text-sm">{new Date(estDate).getFullYear() || "N/A"}</Text>
+             </View>
           </View>
 
           {/* About */}
-          <Text className="font-montserrat-regular text-[14px] text-gray-700 mb-4 leading-5">{about}</Text>
+          <Text className="font-bold text-lg text-gray-800 mb-2">About Course</Text>
+          <Text className="text-gray-600 text-sm leading-6 mb-6">{description}</Text>
 
-          {/* Buttons */}
-          <View className="flex-row justify-between mb-4">
-            <TouchableOpacity className="flex-1 bg-blue-50 border border-blue-200 rounded-full py-3 px-4 mr-2">
-              <Text className="font-montserrat-semibold text-blue-600 text-center text-[14px]">Request a Call</Text>
+          {/* Features Grid */}
+          <Text className="font-bold text-lg text-gray-800 mb-3">Highlights</Text>
+          <View className="flex-row flex-wrap">
+             {apiData?.hasWifi && renderFeature("wifi", "WiFi", "Yes")}
+             {apiData?.hasAC && renderFeature("snow", "AC", "Yes")}
+             {apiData?.placementDrives && renderFeature("briefcase", "Placements", "Yes")}
+             {course.programDuration && renderFeature("hourglass", "Duration", course.programDuration)}
+             {course.level && renderFeature("layers", "Level", course.level)}
+          </View>
+
+          {/* Action Buttons */}
+          <View className="flex-row gap-3 mt-6 mb-10">
+            <TouchableOpacity className="flex-1 bg-white border border-[#0222D7] py-4 rounded-full">
+               <Text className="text-[#0222D7] font-bold text-center">Request Callback</Text>
             </TouchableOpacity>
-            <TouchableOpacity className="flex-1 bg-[#007AFF] rounded-full py-3 px-4 ml-2">
-              <Text className="font-montserrat-semibold text-white text-center text-[14px]">Book Demo</Text>
+            <TouchableOpacity className="flex-1 bg-[#0222D7] py-4 rounded-full shadow-lg">
+               <Text className="text-white font-bold text-center">Book Demo</Text>
             </TouchableOpacity>
           </View>
 
-          {/* Operational Days */}
-          <View className="mb-4">
-            <Text className="font-montserrat-semibold text-[16px] text-black mb-2">Operational Days</Text>
-            <View className="flex-row justify-around">
-              {operationalDays.map((day, index) => (
-                <TouchableOpacity key={index} className="bg-blue-50 rounded-full py-2 px-4">
-                  <Text className="font-montserrat-medium text-blue-600 text-[12px]">{day}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-
-          {/* Additional Features */}
-          <View className="mb-4">
-            <Text className="font-montserrat-semibold text-[16px] text-black mb-3">Additional Features of Institute</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row">
-              {categoryFeatures.map((feature, index) => (
-                <View key={index} className="bg-gray-50 rounded-lg p-3 mr-2 min-w-[80px] items-center">
-                  <Ionicons name={feature.icon as any} size={20} color="#007AFF" className="mb-1" />
-                  <Text className="font-montserrat-regular text-[10px] text-center text-gray-600 mb-1">{feature.label}</Text>
-                  <Text className="font-montserrat-semibold text-[12px] text-black">{feature.value}</Text>
-                </View>
-              ))}
-            </ScrollView>
-          </View>
-
-          {/* Facilities */}
-          <View className="mb-6">
-            <Text className="font-montserrat-semibold text-[16px] text-black mb-3">Facilities</Text>
-            <View className="flex-row flex-wrap justify-between">
-              {facilities.map((facility, index) => (
-                <View key={index} className="w-[48%] bg-gray-50 rounded-lg p-3 mb-2 items-center">
-                  <Ionicons name={facility.icon as any} size={24} color="#007AFF" className="mb-1" />
-                  <Text className="font-montserrat-regular text-[12px] text-center text-gray-600 mb-1">{facility.label}</Text>
-                  <Text className="font-montserrat-semibold text-[12px] text-green-600">{facility.value}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-
-          {/* Banner */}
-          <View className="relative mb-2">
-            <Image source={{ uri: bannerImage }} className="w-full h-[150px] rounded-lg" />
-            <LinearGradient
-              colors={['rgba(255, 193, 7, 0.8)', 'rgba(255, 152, 0, 0.8)']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              className="absolute inset-0 rounded-lg justify-center items-center"
-            >
-              <Text className="font-montserrat-bold text-white text-[18px] text-center px-4">{bannerText}</Text>
-            </LinearGradient>
-          </View>
-
-          {/* Show More */}
-          <TouchableOpacity className="bg-gray-100 rounded-full py-3 px-6 mb-4">
-            <Text className="font-montserrat-semibold text-center text-[16px] text-gray-700">Show More</Text>
-          </TouchableOpacity>
         </View>
       </ScrollView>
     </View>
